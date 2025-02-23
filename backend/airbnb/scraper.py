@@ -6,6 +6,7 @@ from selenium.webdriver.common.keys import Keys
 import time
 import json
 from datetime import datetime
+from selenium.webdriver.chrome.options import Options
 
 def scroll_page(driver, pause_time=1):
     """Scroll the page to load all listings."""
@@ -59,8 +60,8 @@ def clear_and_set_value(input_element, value):
     input_element.send_keys(str(value))
     time.sleep(0.5)
 
-def click_filter_and_set_budget(driver, budget):
-    """Click filter button and set price range based on budget."""
+def click_filter_and_set_budget(driver, min_budget, max_budget):
+    """Click filter button and set price range based on min and max budget."""
     try:
         # Find and click filter button (keeping existing filter button logic)
         filter_selectors = [
@@ -148,11 +149,6 @@ def click_filter_and_set_budget(driver, budget):
         if not min_price or not max_price:
             raise Exception("Could not find price input fields")
         
-        # Calculate price range
-        budget = int(budget)
-        min_budget = max(0, budget - 100)
-        max_budget = budget + 100
-        
         print(f"Setting price range: ${min_budget} - ${max_budget}")
         
         # Clear and set minimum price
@@ -163,7 +159,7 @@ def click_filter_and_set_budget(driver, budget):
         min_price.send_keys(Keys.DELETE)
         min_price.send_keys(Keys.BACKSPACE)
         time.sleep(1)
-        min_price.send_keys(str(min_budget))
+        min_price.send_keys(str(int(min_budget)))
         min_price.send_keys(Keys.TAB)  # Tab out to trigger value update
         time.sleep(1)
         
@@ -175,7 +171,7 @@ def click_filter_and_set_budget(driver, budget):
         max_price.send_keys(Keys.DELETE)
         max_price.send_keys(Keys.BACKSPACE)
         time.sleep(1)
-        max_price.send_keys(str(max_budget))
+        max_price.send_keys(str(int(max_budget)))
         max_price.send_keys(Keys.TAB)  # Tab out to trigger value update
         time.sleep(2)
         
@@ -219,7 +215,7 @@ def click_filter_and_set_budget(driver, budget):
         raise  # Re-raise the exception to handle it in the calling function
 
 
-def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, budget):
+def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, min_budget, max_budget):
     base_url = "https://www.airbnb.com/s/"
     search_url = (
         f"{base_url}{destination.replace(' ', '%20')}/homes"
@@ -227,7 +223,15 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, budget):
         f"&adults={guests}"
     )
 
-    driver = webdriver.Chrome()
+    # Set up Chrome options for headless mode
+    chrome_options = Options()
+    chrome_options.add_argument("--headless=new")  # Use new headless mode
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080")
+
+    driver = webdriver.Chrome(options=chrome_options)
     driver.get(search_url)
     
     # Wait for initial page load
@@ -239,7 +243,7 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, budget):
     click_got_it(driver)
     
     # Set budget filter
-    click_filter_and_set_budget(driver, budget)
+    click_filter_and_set_budget(driver, min_budget, max_budget)
     
     # Scroll to load all listings
     scroll_page(driver)
@@ -325,9 +329,8 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, budget):
             "checkin": checkin,
             "checkout": checkout,
             "guests": guests,
-            "budget": budget,
-            "min_price": max(0, int(budget) - 100),
-            "max_price": int(budget) + 100,
+            "min_budget": min_budget,
+            "max_budget": max_budget,
             "scrape_time": datetime.now().isoformat(),
             "total_listings": len(scraped_data)
         },
@@ -337,13 +340,21 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, budget):
     return output_data
 
 if __name__ == "__main__":
-    budget = input("What's your budget per night (USD)? : ")
+    min_budget = input("What's your minimum budget per night (USD)? : ")
+    max_budget = input("What's your maximum budget per night (USD)? : ")
     destination_input = input("What's the destination? : ")
     checkin_input = input("What's the check-in date (YYYY-MM-DD)? : ")
     checkout_input = input("What's the checkout date (YYYY-MM-DD)? : ")
     guests_input = input("How many guests? : ")
 
-    results = scrape_airbnb_with_got_it(destination_input, checkin_input, checkout_input, guests_input, budget)
+    results = scrape_airbnb_with_got_it(
+        destination_input, 
+        checkin_input, 
+        checkout_input, 
+        guests_input, 
+        float(min_budget),
+        float(max_budget)
+    )
     
     # Create filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -43,19 +43,21 @@ class ScraperRequest(BaseModel):
     startDate: str
     endDate: str
     travelers: int
-    budget: str
+    min_budget: str
+    max_budget: str
 
 @app.post("/api/scrape-airbnb")
 async def scrape_airbnb(request: ScraperRequest):
     try:
         logger.info(f"Received scraping request for destination: {request.destination}")
         
-        # Convert budget string to number (remove currency symbol if present)
-        budget = request.budget.replace("$", "").replace(",", "")
+        # Convert budget strings to numbers (remove currency symbol if present)
+        min_budget = request.min_budget.replace("$", "").replace(",", "")
+        max_budget = request.max_budget.replace("$", "").replace(",", "")
         
         # Log the processed request details
         logger.info(f"Processing request with parameters: dates={request.startDate} to {request.endDate}, "
-                   f"travelers={request.travelers}, budget={budget}")
+                   f"travelers={request.travelers}, budget range=${min_budget}-${max_budget}")
         
         # Call the scraper function
         listings = scrape_airbnb_with_got_it(
@@ -63,7 +65,8 @@ async def scrape_airbnb(request: ScraperRequest):
             checkin=request.startDate,
             checkout=request.endDate,
             guests=request.travelers,
-            budget=float(budget)
+            min_budget=float(min_budget),
+            max_budget=float(max_budget)
         )
         
         # Save results to a JSON file
