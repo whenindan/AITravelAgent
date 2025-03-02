@@ -7,6 +7,7 @@ import logging
 import sys
 from airbnb.scraper import scrape_airbnb_with_got_it
 import json
+from chatbot import chat_router
 
 # Configure logging
 logging.basicConfig(
@@ -20,14 +21,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Enable CORS with more permissive settings for development
+# Add CORS middleware with more specific configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # More permissive for development
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],  # Add your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add the chat router to your app
+app.include_router(chat_router, prefix="/api", tags=["chat"])
 
 @app.on_event("startup")
 async def startup_event():
@@ -92,4 +96,9 @@ async def scrape_airbnb(request: ScraperRequest):
                 "error": str(e)
             },
             status_code=500
-        ) 
+        )
+
+# Add this at the end of your file for debugging
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
