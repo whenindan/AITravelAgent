@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,6 +10,13 @@ interface Message {
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,13 +29,45 @@ export default function ChatInterface() {
 
     setMessages((prev) => [...prev, newMessage]);
     setInput('');
+    setIsLoading(true);
 
-    // TODO: Add API call to backend here
-    const aiResponse: Message = {
-      role: 'assistant',
-      content: 'I\'m processing your travel request...',
-    };
-    setMessages((prev) => [...prev, aiResponse]);
+    try {
+      // Call the backend API - make sure the URL is correct
+      // Using absolute URL to ensure correct endpoint
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      const response = await fetch(`${backendUrl}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: input }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get response from server: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      const aiResponse: Message = {
+        role: 'assistant',
+        content: data.response,
+      };
+      
+      setMessages((prev) => [...prev, aiResponse]);
+    } catch (error) {
+      console.error('Error:', error);
+      
+      // Show error message to user
+      const errorResponse: Message = {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again later.',
+      };
+      
+      setMessages((prev) => [...prev, errorResponse]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -52,6 +91,18 @@ export default function ChatInterface() {
             </div>
           </div>
         ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="max-w-[70%] rounded-lg p-3 bg-gray-100 text-gray-800">
+              <div className="flex space-x-2">
+                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
       <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex gap-2">
@@ -61,10 +112,14 @@ export default function ChatInterface() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Tell me about your dream vacation..."
             className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
+            disabled={isLoading}
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className={`px-4 py-2 bg-black text-white rounded-lg transition-colors ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-800'
+            }`}
+            disabled={isLoading}
           >
             Send
           </button>
