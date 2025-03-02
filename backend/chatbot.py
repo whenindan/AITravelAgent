@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, WebSocket
+from fastapi import FastAPI, APIRouter, HTTPException, WebSocket
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 import logging
@@ -157,4 +158,23 @@ async def websocket_endpoint(websocket: WebSocket):
         try:
             await websocket.send_text(f"Error: {str(e)}")
         except:
-            logger.error("Could not send error message to WebSocket") 
+            logger.error("Could not send error message to WebSocket")
+
+# Create the main FastAPI app
+app = FastAPI()
+
+# Configure CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
+# Include the chat router with a prefix
+app.include_router(chat_router, prefix="/api")
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 

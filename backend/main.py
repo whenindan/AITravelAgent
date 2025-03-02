@@ -22,17 +22,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
-# Add CORS middleware with more specific configuration
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],  # Add your frontend URL
+    allow_origins=["*"],  # For development, you can use "*"
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Add the chat router to your app
-app.include_router(chat_router, prefix="/api", tags=["chat"])
+# Include the chat router with a prefix
+app.include_router(chat_router, prefix="/api")
 
 @app.on_event("startup")
 async def startup_event():

@@ -35,6 +35,7 @@ export default function ChatInterface() {
       // Call the backend API - make sure the URL is correct
       // Using absolute URL to ensure correct endpoint
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+      console.log("Sending request to:", `${backendUrl}/api/chat`);
       const response = await fetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: {
@@ -42,9 +43,10 @@ export default function ChatInterface() {
         },
         body: JSON.stringify({ message: input }),
       });
+      console.log("Response status:", response.status);
 
       if (!response.ok) {
-        throw new Error(`Failed to get response from server: ${response.status}`);
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
@@ -56,7 +58,7 @@ export default function ChatInterface() {
       
       setMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error details:', error);
       
       // Show error message to user
       const errorResponse: Message = {
