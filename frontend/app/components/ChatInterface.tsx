@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useTravel } from '../context/TravelContext';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -12,6 +13,19 @@ export default function ChatInterface() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { travelPreferences } = useTravel();
+
+  // Check if travel preferences are complete
+  const areTravelPreferencesComplete = () => {
+    return (
+      travelPreferences.destination &&
+      travelPreferences.travelingFrom &&
+      travelPreferences.startDate &&
+      travelPreferences.endDate &&
+      travelPreferences.travelers > 0 &&
+      travelPreferences.totalBudget
+    );
+  };
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -20,7 +34,7 @@ export default function ChatInterface() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !areTravelPreferencesComplete()) return;
 
     const newMessage: Message = {
       role: 'user',
@@ -33,9 +47,7 @@ export default function ChatInterface() {
 
     try {
       // Call the backend API - make sure the URL is correct
-      // Using absolute URL to ensure correct endpoint
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-      console.log("Sending request to:", `${backendUrl}/api/chat`);
       const response = await fetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: {
@@ -43,10 +55,9 @@ export default function ChatInterface() {
         },
         body: JSON.stringify({ message: input }),
       });
-      console.log("Response status:", response.status);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Failed to get response from server: ${response.status}`);
       }
 
       const data = await response.json();
@@ -58,7 +69,7 @@ export default function ChatInterface() {
       
       setMessages((prev) => [...prev, aiResponse]);
     } catch (error) {
-      console.error('Error details:', error);
+      console.error('Error:', error);
       
       // Show error message to user
       const errorResponse: Message = {
@@ -71,6 +82,9 @@ export default function ChatInterface() {
       setIsLoading(false);
     }
   };
+
+  // Check if preferences are complete
+  const preferencesComplete = areTravelPreferencesComplete();
 
   return (
     <div className="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
@@ -93,6 +107,15 @@ export default function ChatInterface() {
             </div>
           </div>
         ))}
+        {!preferencesComplete && messages.length === 0 && (
+          <div className="flex justify-center items-center h-full">
+            <div className="text-center text-gray-500">
+              <p className="mb-2">Please complete your travel preferences first</p>
+              <p className="text-sm">Fill in all required fields in the travel preferences form</p>
+            </div>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
       <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex gap-2">
@@ -100,14 +123,19 @@ export default function ChatInterface() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Tell me about your dream vacation..."
+            placeholder={preferencesComplete ? "Tell me about your dream vacation..." : "Complete travel preferences first..."}
             className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+            disabled={!preferencesComplete || isLoading}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              preferencesComplete 
+                ? "bg-black text-white hover:bg-gray-800" 
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           >
-            Send
+            {isLoading ? "Sending..." : "Send"}
           </button>
         </div>
       </form>

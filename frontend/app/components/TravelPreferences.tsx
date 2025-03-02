@@ -37,7 +37,7 @@ export default function TravelPreferences() {
   const [error, setError] = useState<string | null>(null);
   const [scrapingStatus, setScrapingStatus] = useState<string>('');
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
+  const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
   const handleInterestToggle = (interest: string) => {
     setPreferences((prev) => ({
@@ -70,11 +70,11 @@ export default function TravelPreferences() {
       setIsLoading(true);
       setScrapingStatus('Initializing scraper...');
 
-      // Health check
-      try {
-        await fetch(`${API_URL}/health-check`);
-      } catch (error) {
-        throw new Error('Backend server is not running. Please start the server and try again.');
+      // Check if backend is running
+      const healthCheckResponse = await fetch(`${API_URL}/health-check`);
+      if (!healthCheckResponse.ok) {
+        setScrapingStatus('Backend server is not responding properly. Please check server status.');
+        return;
       }
 
       setScrapingStatus('Starting to scrape Airbnb listings...');
