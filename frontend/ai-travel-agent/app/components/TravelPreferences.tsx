@@ -4,10 +4,10 @@ import { useState } from 'react';
 
 interface TravelPreferences {
   destination: string;
+  travelingFrom: string;
   startDate: string;
   endDate: string;
-  min_budget: string;
-  max_budget: string;
+  totalBudget: string;
   travelers: string;
   interests: string[];
 }
@@ -26,10 +26,10 @@ const INTEREST_OPTIONS = [
 export default function TravelPreferences() {
   const [preferences, setPreferences] = useState<TravelPreferences>({
     destination: '',
+    travelingFrom: '',
     startDate: '',
     endDate: '',
-    min_budget: '',
-    max_budget: '',
+    totalBudget: '',
     travelers: '',
     interests: [],
   });
@@ -37,7 +37,7 @@ export default function TravelPreferences() {
   const [error, setError] = useState<string | null>(null);
   const [scrapingStatus, setScrapingStatus] = useState<string>('');
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001';
 
   const handleInterestToggle = (interest: string) => {
     setPreferences((prev) => ({
@@ -54,17 +54,16 @@ export default function TravelPreferences() {
     setScrapingStatus('');
 
     try {
-      if (!preferences.destination || !preferences.startDate || !preferences.endDate || 
-          !preferences.min_budget || !preferences.max_budget || !preferences.travelers) {
+      if (!preferences.destination || !preferences.travelingFrom || !preferences.startDate || !preferences.endDate || 
+          !preferences.travelers || !preferences.totalBudget) {
         setError('Please fill in all required fields');
         return;
       }
 
-      // Validate that max budget is greater than min budget
-      const minBudget = parseFloat(preferences.min_budget);
-      const maxBudget = parseFloat(preferences.max_budget);
-      if (maxBudget <= minBudget) {
-        setError('Maximum budget must be greater than minimum budget');
+      // Validate total budget
+      const totalBudget = parseFloat(preferences.totalBudget);
+      if (isNaN(totalBudget) || totalBudget <= 0) {
+        setError('Total budget must be a positive number');
         return;
       }
 
@@ -90,11 +89,11 @@ export default function TravelPreferences() {
         credentials: 'omit',
         body: JSON.stringify({
           destination: preferences.destination,
+          travelingFrom: preferences.travelingFrom,
           startDate: preferences.startDate,
           endDate: preferences.endDate,
           travelers: parseInt(preferences.travelers) || 1,
-          min_budget: preferences.min_budget,
-          max_budget: preferences.max_budget
+          totalBudget: preferences.totalBudget
         }),
       });
 
@@ -149,6 +148,25 @@ export default function TravelPreferences() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              Traveling From*
+            </label>
+            <input
+              type="text"
+              value={preferences.travelingFrom}
+              onChange={(e) =>
+                setPreferences((prev) => ({
+                  ...prev,
+                  travelingFrom: e.target.value,
+                }))
+              }
+              placeholder="Enter your departure city"
+              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
+              required
+              disabled={isLoading}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Destination*
             </label>
             <input
@@ -168,15 +186,15 @@ export default function TravelPreferences() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Minimum Budget per night*
+              Total Budget for Trip*
             </label>
             <input
               type="text"
-              value={preferences.min_budget}
+              value={preferences.totalBudget}
               onChange={(e) =>
-                setPreferences((prev) => ({ ...prev, min_budget: e.target.value }))
+                setPreferences((prev) => ({ ...prev, totalBudget: e.target.value }))
               }
-              placeholder="Enter minimum amount (e.g., 100)"
+              placeholder="Enter total budget (e.g., 2000)"
               className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
               required
               disabled={isLoading}
@@ -184,16 +202,20 @@ export default function TravelPreferences() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Maximum Budget per night*
+              Number of Travelers*
             </label>
             <input
-              type="text"
-              value={preferences.max_budget}
+              type="number"
+              min="1"
+              value={preferences.travelers}
               onChange={(e) =>
-                setPreferences((prev) => ({ ...prev, max_budget: e.target.value }))
+                setPreferences((prev) => ({
+                  ...prev,
+                  travelers: e.target.value,
+                }))
               }
-              placeholder="Enter maximum amount (e.g., 300)"
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
+              placeholder="Enter number of travelers"
+              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
               required
               disabled={isLoading}
             />
@@ -226,26 +248,6 @@ export default function TravelPreferences() {
               onChange={(e) =>
                 setPreferences((prev) => ({ ...prev, endDate: e.target.value }))
               }
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
-              required
-              disabled={isLoading}
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Number of Travelers*
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={preferences.travelers}
-              onChange={(e) =>
-                setPreferences((prev) => ({
-                  ...prev,
-                  travelers: e.target.value,
-                }))
-              }
-              placeholder="Enter number of travelers"
               className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
               required
               disabled={isLoading}

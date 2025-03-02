@@ -91,18 +91,6 @@ export default function ChatInterface() {
             </div>
           </div>
         ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="max-w-[70%] rounded-lg p-3 bg-gray-100 text-gray-800">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
       </div>
       <form onSubmit={handleSubmit} className="p-4 border-t">
         <div className="flex gap-2">
@@ -112,14 +100,10 @@ export default function ChatInterface() {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Tell me about your dream vacation..."
             className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
-            disabled={isLoading}
           />
           <button
             type="submit"
-            className={`px-4 py-2 bg-black text-white rounded-lg transition-colors ${
-              isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-800'
-            }`}
-            disabled={isLoading}
+            className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
           >
             Send
           </button>
