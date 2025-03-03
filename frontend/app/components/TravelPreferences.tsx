@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useTravel } from '../context/TravelContext';
 
-interface TravelPreferences {
+interface TravelPreferencesForm {
   destination: string;
   travelingFrom: string;
   startDate: string;
@@ -24,7 +25,8 @@ const INTEREST_OPTIONS = [
 ];
 
 export default function TravelPreferences() {
-  const [preferences, setPreferences] = useState<TravelPreferences>({
+  const { updateTravelPreferences } = useTravel();
+  const [preferences, setPreferences] = useState<TravelPreferencesForm>({
     destination: '',
     travelingFrom: '',
     startDate: '',
@@ -107,6 +109,16 @@ export default function TravelPreferences() {
       const data = await response.json();
       
       if (data.success) {
+        // Update the travel preferences in the context
+        updateTravelPreferences({
+          destination: preferences.destination,
+          travelingFrom: preferences.travelingFrom,
+          startDate: preferences.startDate,
+          endDate: preferences.endDate,
+          travelers: parseInt(preferences.travelers) || 1,
+          totalBudget: preferences.totalBudget
+        });
+        
         setScrapingStatus(`Successfully scraped ${data.listings?.listings?.length || 0} listings!`);
         setTimeout(() => {
           alert(`Successfully scraped listings! Saved to: ${data.message}`);
