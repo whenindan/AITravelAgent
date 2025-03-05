@@ -333,7 +333,7 @@ def select_feature(driver, feature_name=DEFAULT_FEATURE):
         logger.error(f"Error selecting feature {feature_name}: {str(e)}")
         return False
 
-def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, min_budget=None, max_budget=None, feature=DEFAULT_FEATURE):
+def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, feature=DEFAULT_FEATURE):
     """
     Scrape Airbnb listings using Selenium with handling for the "Got it" popup.
     
@@ -342,8 +342,6 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, min_budget
         checkin (str): Check-in date in YYYY-MM-DD format
         checkout (str): Check-out date in YYYY-MM-DD format
         guests (int): Number of guests
-        min_budget (float, optional): Minimum budget per night (not used currently)
-        max_budget (float, optional): Maximum budget per night (not used currently)
         feature (str, optional): Property feature to filter by (default is "Amazing views")
         
     Returns:
@@ -381,7 +379,7 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, min_budget
     # Try clicking 'Got it'
     click_got_it(driver)
     
-    # Select the specified feature (default is "Amazing views")
+    # Select the specified feature
     if feature and feature in AIRBNB_FEATURES:
         logger.info(f"Selecting feature: {feature}")
         select_feature(driver, feature)
@@ -447,13 +445,27 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, min_budget
             except:
                 pass
             
+            # Image URL
+            image_url = "No image"
+            try:
+                img_elem = listing.find_element(By.CSS_SELECTOR, 'img[data-testid="card-image"], img[decoding="async"]')
+                image_url = img_elem.get_attribute('src')
+            except:
+                try:
+                    # Try alternative selector
+                    img_elem = listing.find_element(By.CSS_SELECTOR, 'picture img')
+                    image_url = img_elem.get_attribute('src')
+                except:
+                    pass
+            
             # Only add listings that have some data
             if any(x != "No " + y for x, y in zip([title, price_text, listing_url], ["title", "price", "URL"])):
                 data = {
                     "title": title,
                     "price_text": price_text,
                     "rating": rating,
-                    "url": listing_url
+                    "url": listing_url,
+                    "thumbnail": image_url if image_url != "No image" else None
                 }
                 scraped_data.append(data)
         
@@ -463,29 +475,23 @@ def scrape_airbnb_with_got_it(destination, checkin, checkout, guests, min_budget
     
     driver.quit()
     
-    # Add metadata to the results
-    output_data = {
-        "metadata": {
-            "destination": destination,
-            "checkin": checkin,
-            "checkout": checkout,
-            "guests": guests,
-            "feature": feature,
-            "scrape_time": datetime.now().isoformat(),
-            "total_listings": len(scraped_data)
-        },
-        "listings": scraped_data
+    # When creating the metadata, don't include budget-related fields
+    metadata = {
+        "destination": destination,
+        "checkin": checkin,
+        "checkout": checkout,
+        "guests": guests,
+        "feature": feature,
+        "timestamp": datetime.now().isoformat(),
+        "total_listings": len(scraped_data)
     }
     
-    # Store budget information in metadata if provided
-    if min_budget is not None and max_budget is not None:
-        output_data["metadata"]["min_budget"] = min_budget
-        output_data["metadata"]["max_budget"] = max_budget
-    
-    return output_data
+    return {
+        "metadata": metadata,
+        "listings": scraped_data
+    }
 
 if __name__ == "__main__":
-    budget = input("What's your budget per night (USD)? : ")
     destination_input = input("What's the destination? : ")
     checkin_input = input("What's the check-in date (YYYY-MM-DD)? : ")
     checkout_input = input("What's the checkout date (YYYY-MM-DD)? : ")
@@ -510,7 +516,6 @@ if __name__ == "__main__":
                 selected_feature = feature_input
     
     logger.info(f"Starting scraper in headless mode with feature: {selected_feature}...")
-    # For testing purposes, we're not using the budget for filtering
     results = scrape_airbnb_with_got_it(
         destination=destination_input, 
         checkin=checkin_input, 

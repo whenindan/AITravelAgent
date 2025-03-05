@@ -73,29 +73,17 @@ async def scrape_airbnb(request: ScraperRequest):
         # Convert budget string to number (remove currency symbol if present)
         total_budget = float(request.totalBudget.replace("$", "").replace(",", ""))
         
-        # Calculate budget per night
-        budget_per_night = total_budget / trip_days
-        
-        # Set min and max budget per night (±20% of the calculated budget per night)
-        min_budget = budget_per_night * 0.8
-        max_budget = budget_per_night * 1.2
-        
-        logger.info(f"Total budget: ${total_budget}, budget per night: ${budget_per_night:.2f} "
-                  f"(range: ${min_budget:.2f}-${max_budget:.2f})")
-        
         # Log the processed request details
         logger.info(f"Processing request with parameters: dates={request.startDate} to {request.endDate}, "
                    f"travelers={request.travelers}, trip duration={trip_days} days")
         
-        # Call the scraper function - we're storing the budget but not using it for filtering
-        # The scraper has been updated to not use the budget for filtering
+        # Call the scraper function
         listings = scrape_airbnb_with_got_it(
             destination=request.destination,
             checkin=request.startDate,
             checkout=request.endDate,
             guests=request.travelers,
-            min_budget=min_budget,  # These values are stored in metadata but not used for filtering
-            max_budget=max_budget   # These values are stored in metadata but not used for filtering
+            feature="Amazing views"  # Default feature
         )
         
         # Remove description field from each listing if it exists
@@ -106,16 +94,14 @@ async def scrape_airbnb(request: ScraperRequest):
         # Add trip information to metadata
         listings["metadata"]["trip_days"] = trip_days
         
-        # Add budget information to metadata
+        # Add only total_budget to metadata (remove budget_per_night, min_budget, max_budget)
         listings["metadata"]["total_budget"] = total_budget
-        listings["metadata"]["budget_per_night"] = budget_per_night
         
         # Save results to a JSON file
         filename = f"airbnb_listings_{request.destination.replace(' ', '_')}_{date.today()}.json"
         with open(filename, "w") as f:
             json.dump(listings, f, indent=2)
         
-        logger.info(f"Successfully scraped listings and saved to {filename}")
         
         return JSONResponse(
             content={

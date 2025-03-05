@@ -2,6 +2,13 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
+interface Listing {
+  title: string;
+  price_text: string;
+  rating: string;
+  url: string;
+}
+
 interface TravelPreferences {
   destination: string;
   travelingFrom: string;
@@ -14,6 +21,8 @@ interface TravelPreferences {
 interface TravelContextType {
   travelPreferences: TravelPreferences;
   updateTravelPreferences: (preferences: Partial<TravelPreferences>) => void;
+  selectedListings: Listing[];
+  setSelectedListings: (listings: Listing[]) => void;
 }
 
 const defaultPreferences: TravelPreferences = {
@@ -29,13 +38,19 @@ const TravelContext = createContext<TravelContextType | undefined>(undefined);
 
 export function TravelProvider({ children }: { children: ReactNode }) {
   const [travelPreferences, setTravelPreferences] = useState<TravelPreferences>(defaultPreferences);
+  const [selectedListings, setSelectedListings] = useState<Listing[]>([]);
 
   const updateTravelPreferences = (preferences: Partial<TravelPreferences>) => {
     setTravelPreferences(prev => ({ ...prev, ...preferences }));
   };
 
   return (
-    <TravelContext.Provider value={{ travelPreferences, updateTravelPreferences }}>
+    <TravelContext.Provider value={{ 
+      travelPreferences, 
+      updateTravelPreferences,
+      selectedListings,
+      setSelectedListings
+    }}>
       {children}
     </TravelContext.Provider>
   );

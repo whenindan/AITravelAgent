@@ -25,7 +25,7 @@ const INTEREST_OPTIONS = [
 ];
 
 export default function TravelPreferences() {
-  const { updateTravelPreferences } = useTravel();
+  const { updateTravelPreferences, setSelectedListings } = useTravel();
   const [preferences, setPreferences] = useState<TravelPreferencesForm>({
     destination: '',
     travelingFrom: '',
@@ -50,6 +50,35 @@ export default function TravelPreferences() {
     }));
   };
 
+  const selectDiverseListings = (listings: any[]): any[] => {
+    if (!listings || listings.length === 0) return [];
+    
+    // Extract price from price_text and convert to number
+    const listingsWithPrice = listings.map(listing => {
+      const priceMatch = listing.price_text.match(/\$(\d+)/);
+      const price = priceMatch ? parseInt(priceMatch[1], 10) : 0;
+      return { ...listing, numericPrice: price };
+    }).filter(listing => listing.numericPrice > 0);
+    
+    // Sort by price
+    listingsWithPrice.sort((a, b) => a.numericPrice - b.numericPrice);
+    
+    const result = [];
+    const totalListings = listingsWithPrice.length;
+    
+    if (totalListings <= 5) {
+      return listingsWithPrice;
+    }
+    
+    // Select listings at different price points
+    for (let i = 0; i < 5; i++) {
+      const index = Math.floor((i * (totalListings - 1)) / 4);
+      result.push(listingsWithPrice[index]);
+    }
+    
+    return result;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -70,7 +99,7 @@ export default function TravelPreferences() {
       }
 
       setIsLoading(true);
-      setScrapingStatus('Initializing scraper...');
+  
 
       // Check if backend is running
       const healthCheckResponse = await fetch(`${API_URL}/health-check`);
@@ -79,7 +108,6 @@ export default function TravelPreferences() {
         return;
       }
 
-      setScrapingStatus('Starting to scrape Airbnb listings...');
       
       const response = await fetch(`${API_URL}/api/scrape-airbnb`, {
         method: 'POST',
@@ -119,11 +147,9 @@ export default function TravelPreferences() {
           totalBudget: preferences.totalBudget
         });
         
-        setScrapingStatus(`Successfully scraped ${data.listings?.listings?.length || 0} listings!`);
-        setTimeout(() => {
-          alert(`Successfully scraped listings! Saved to: ${data.message}`);
-          setScrapingStatus('');
-        }, 2000);
+        // Select 5 diverse listings and store them in context
+        const diverseListings = selectDiverseListings(data.listings.listings);
+        setSelectedListings(diverseListings);
       } else {
         setError(data.error || 'An error occurred while processing your request');
       }
@@ -198,7 +224,7 @@ export default function TravelPreferences() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Total Budget for Trip*
+              Total Budget for Trip ($)*
             </label>
             <input
               type="text"
@@ -299,7 +325,7 @@ export default function TravelPreferences() {
           }`}
           disabled={isLoading}
         >
-          {isLoading ? 'Processing...' : 'Update Preferences'}
+          {isLoading ? 'Loading Preferences...' : 'Submit'}
         </button>
       </form>
     </div>
