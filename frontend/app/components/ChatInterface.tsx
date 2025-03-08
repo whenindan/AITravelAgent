@@ -32,183 +32,172 @@ export default function ChatInterface() {
     );
   };
 
-  // Auto-scroll to bottom when messages change, but only within the chat container
+  // Calculate trip days
+  const calculateTripDays = () => {
+    if (travelPreferences.startDate && travelPreferences.endDate) {
+      const start = new Date(travelPreferences.startDate);
+      const end = new Date(travelPreferences.endDate);
+      return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+    }
+    return 1;
+  };
+
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messagesEndRef.current && chatContainerRef.current) {
-      // Only scroll the chat container, not the whole page
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [messages, currentTypingText]);
 
   // Add initial welcome message when preferences are complete
   useEffect(() => {
-    const preferencesComplete = areTravelPreferencesComplete();
-    
-    if (preferencesComplete && messages.length === 0 && selectedListings.length > 0) {
-      // Add a slight delay before starting the welcome message
-      const timer = setTimeout(() => {
-        const welcomeMessage = `Hi there! I see you're planning a trip to ${travelPreferences.destination} from ${travelPreferences.startDate} to ${travelPreferences.endDate} for ${travelPreferences.travelers} traveler(s) with a budget of ${travelPreferences.totalBudget}. I've found some great Airbnb listings that might interest you. Would you like to see them?`;
-        
-        simulateTyping(welcomeMessage, false); // Don't show listings immediately
-      }, 500);
+    // Only run this effect if we have no messages yet
+    if (messages.length === 0) {
+      const preferencesComplete = areTravelPreferencesComplete();
       
-      return () => clearTimeout(timer);
+      if (preferencesComplete) {
+        // Add a slight delay before starting the welcome message
+        const timer = setTimeout(() => {
+          const welcomeMessage = `Hi there! I see you're planning a trip to ${travelPreferences.destination} from ${travelPreferences.startDate} to ${travelPreferences.endDate} for ${travelPreferences.travelers} traveler(s) with a budget of ${travelPreferences.totalBudget}. How can I help you plan your trip?`;
+          
+          simulateTyping(welcomeMessage);
+        }, 500);
+        
+        return () => clearTimeout(timer);
+      }
     }
-  }, [travelPreferences, selectedListings, messages.length]);
+  }, [
+    // Keep a stable dependency array with individual properties
+    messages.length,
+    travelPreferences.destination,
+    travelPreferences.travelingFrom,
+    travelPreferences.startDate,
+    travelPreferences.endDate,
+    travelPreferences.travelers,
+    travelPreferences.totalBudget
+  ]);
 
-  // Function to simulate typing effect
+  // Function to simulate typing effect - FIXED to include the first letter
   const simulateTyping = (text: string, showListings: boolean = false) => {
     setIsTyping(true);
-    setCurrentTypingText('');
+    setCurrentTypingText(''); // Start with empty string
     
     let i = 0;
-    const typingSpeed = 20; // slightly slower for better readability
+    const typingSpeed = 20;
     
-    // Clear any existing intervals to prevent conflicts
     const typingInterval = setInterval(() => {
       if (i < text.length) {
-        setCurrentTypingText(prev => prev + text.charAt(i));
+        // Make sure to include the first character by starting at index 0
+        setCurrentTypingText(prev => text.substring(0, i + 1));
         i++;
-        
-        // Scroll only within the chat container
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
       } else {
         clearInterval(typingInterval);
         setIsTyping(false);
+        
         setMessages(prev => [...prev, { 
           role: 'assistant', 
           content: text,
-          showListings
+          showListings 
         }]);
-        setCurrentTypingText('');
       }
     }, typingSpeed);
-
-    // Store the interval ID to clear it if component unmounts
-    return () => clearInterval(typingInterval);
   };
 
-  // Add this function to check for affirmative responses
-  const isAffirmativeResponse = (text: string): boolean => {
-    const affirmativeWords = ['yes', 'yeah', 'sure', 'ok', 'okay', 'yep', 'please', 'show', 'see'];
-    const lowerText = text.toLowerCase();
-    
-    return affirmativeWords.some(word => lowerText.includes(word));
-  };
-
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !areTravelPreferencesComplete()) return;
-
-    const userInput = input.trim();
-    const newMessage: Message = {
-      role: 'user',
-      content: userInput,
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
+    
+    if (!input.trim() || isLoading || isTyping) return;
+    
+    const userMessage = input.trim();
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setInput('');
     setIsLoading(true);
-
-    // Check if this is an affirmative response to the "Would you like to see listings?" question
-    const isFirstUserMessage = messages.length === 1 && messages[0].role === 'assistant';
-    const isAskingAboutListings = messages.length > 0 && 
-                                 messages[messages.length - 1].role === 'assistant' && 
-                                 messages[messages.length - 1].content.includes('Would you like to see them?');
     
-    if ((isFirstUserMessage || isAskingAboutListings) && isAffirmativeResponse(userInput)) {
-      // User said yes to seeing listings
-      setIsLoading(false);
-      
-      setTimeout(() => {
-        simulateTyping("Great! Here are 5 Airbnb listings at different price points for your trip:", true);
-      }, 500);
-      
-      return;
+    // Check for specific feature requests
+    if (userMessage.toLowerCase().includes('show me') && 
+        (userMessage.toLowerCase().includes('listing') || userMessage.toLowerCase().includes('airbnb'))) {
+      handleShowListings();
+    } 
+    // Check for requests for cheaper options
+    else if (userMessage.toLowerCase().includes('cheaper') || 
+             userMessage.toLowerCase().includes('less expensive')) {
+      handleCheaperOptions();
     }
-
-    try {
-      // Call the backend API - make sure the URL is correct
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
-      const response = await fetch(`${backendUrl}/api/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: userInput }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to get response from server: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Check if the user is asking to see listings
-      const showListings = userInput.toLowerCase().includes('listing') || 
-                          userInput.toLowerCase().includes('airbnb') ||
-                          userInput.toLowerCase().includes('show me') ||
-                          userInput.toLowerCase().includes('see');
-      
-      // Add a small delay before the assistant starts typing
-      setTimeout(() => {
-        simulateTyping(data.response, showListings);
-      }, 500);
-      
-    } catch (error) {
-      console.error('Error:', error);
-      
-      // Add a small delay before the error message
-      setTimeout(() => {
-        simulateTyping('Sorry, I encountered an error. Please try again later.');
-      }, 500);
-      
-    } finally {
+    // Handle "yes" responses to the welcome message
+    else if (messages.length === 1 && 
+             messages[0].role === 'assistant' && 
+             userMessage.toLowerCase().includes('yes')) {
       setIsLoading(false);
+      simulateTyping("Great! Let me show you some Airbnb listings that might work for your trip:", true);
+    }
+    // Default: send to chatbot API
+    else {
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message: userMessage }),
+        });
+        
+        let data;
+        try {
+          data = await response.json();
+        } catch (error) {
+          // If JSON parsing fails, create a default response
+          data = { 
+            response: "I'm having trouble understanding your request right now. Could you try asking something else?"
+          };
+        }
+        
+        simulateTyping(data.response || "I didn't get a proper response. Can you try again?");
+      } catch (error) {
+        console.error('Error:', error);
+        simulateTyping('Sorry, I encountered an error while connecting to my services. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
+  // Handle showing listings
+  const handleShowListings = () => {
+    setIsLoading(false);
+    
+    if (selectedListings.length === 0) {
+      simulateTyping("I don't have any listings to show you yet. Let me search for some options for your trip.");
+      return;
+    }
+    
+    simulateTyping("Here are some Airbnb listings I found for your trip. These options provide a range of prices and amenities:", true);
+  };
+
+  // Handle requests for cheaper options
+  const handleCheaperOptions = () => {
+    setIsLoading(false);
+    
+    if (selectedListings.length === 0) {
+      simulateTyping("I don't have any listings to compare yet. Let me search for some budget-friendly options for your trip.");
+      return;
+    }
+    
+    simulateTyping("I understand you're looking for more affordable options. Here are some budget-friendly listings that might work for your trip:", true);
+  };
+
+  // Calculate trip days for display
+  const tripDays = calculateTripDays();
+  
   // Check if preferences are complete
   const preferencesComplete = areTravelPreferencesComplete();
 
-  // Calculate trip duration
-  const calculateTripDays = () => {
-    if (!travelPreferences.startDate || !travelPreferences.endDate) return 0;
-    
-    const start = new Date(travelPreferences.startDate);
-    const end = new Date(travelPreferences.endDate);
-    
-    // Calculate the difference in milliseconds
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    
-    // Convert to days
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
-  const tripDays = calculateTripDays();
-
-  // Function to handle showing listings when user asks for them
-  const handleShowListings = () => {
-    if (input.toLowerCase().includes('show') || 
-        input.toLowerCase().includes('see') || 
-        input.toLowerCase().includes('listing') || 
-        input.toLowerCase().includes('airbnb')) {
-      return true;
-    }
-    return false;
-  };
-
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-lg overflow-hidden">
-      <div 
-        ref={chatContainerRef}
-        className="h-[500px] overflow-y-auto p-4 space-y-4"
-      >
+    <div className="flex flex-col h-[600px] bg-white rounded-lg shadow-lg overflow-hidden">
+      <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto">
         {messages.map((message, index) => (
-          <div key={index}>
-            <div
+          <div key={index} className="mb-4">
+            <div 
               className={`flex ${
                 message.role === 'user' ? 'justify-end' : 'justify-start'
               }`}

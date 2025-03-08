@@ -1,6 +1,7 @@
 import { TravelProvider } from './context/TravelContext';
 import ChatInterface from './components/ChatInterface';
 import TravelPreferences from './components/TravelPreferences';
+import BudgetDisplay from './components/BudgetDisplay';
 
 export default function Home() {
   return (
@@ -49,6 +50,11 @@ export default function Home() {
               </h2>
               <TravelPreferences />
             </div>
+          </div>
+          
+          {/* Budget Display Section */}
+          <div className="mt-12">
+            <BudgetDisplay />
           </div>
         </div>
 
