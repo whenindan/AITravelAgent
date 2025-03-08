@@ -18,7 +18,7 @@ export default function ChatInterface() {
   const [currentTypingText, setCurrentTypingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const { travelPreferences, selectedListings } = useTravel();
+  const { travelPreferences, selectedListings, setSelectedListings } = useTravel();
 
   // Check if travel preferences are complete
   const areTravelPreferencesComplete = () => {
@@ -129,7 +129,7 @@ export default function ChatInterface() {
              messages[0].role === 'assistant' && 
              userMessage.toLowerCase().includes('yes')) {
       setIsLoading(false);
-      simulateTyping("Great! Let me show you some Airbnb listings that might work for your trip:", true);
+      handleShowListings();
     }
     // Default: send to chatbot API
     else {
@@ -171,7 +171,53 @@ export default function ChatInterface() {
       return;
     }
     
-    simulateTyping("Here are some Airbnb listings I found for your trip. These options provide a range of prices and amenities:", true);
+    // Filter listings by budget constraint (60% of total budget)
+    const filteredListings = filterListingsByBudget(selectedListings);
+    
+    if (filteredListings.length === 0) {
+      simulateTyping("I couldn't find any listings within 60% of your total budget. Would you like me to show you some other options that might be over this budget?");
+      return;
+    }
+    
+    setSelectedListings(filteredListings);
+    simulateTyping("Here are some Airbnb listings I found for your trip that cost no more than 60% of your total budget. This ensures you'll have enough funds left for other expenses like food, transportation, and activities:", true);
+  };
+
+  // Function to filter listings by budget constraint
+  const filterListingsByBudget = (listings) => {
+    if (!listings || listings.length === 0) return [];
+    
+    // Calculate 60% of the total budget
+    const totalBudget = parseInt(travelPreferences.totalBudget.replace(/[^0-9]/g, ''), 10);
+    const maxAccommodationBudget = totalBudget * 0.6;
+    
+    console.log(`Total budget: $${totalBudget}, 60% max: $${maxAccommodationBudget}`);
+    
+    // Extract and filter listings by budget
+    const affordableListings = listings.filter(listing => {
+      // Extract total price from listing
+      const totalMatch = listing.price_text.match(/\$([0-9,]+)\s+total/i);
+      let totalPrice = 0;
+      
+      if (totalMatch) {
+        // Remove commas and convert to number
+        totalPrice = parseInt(totalMatch[1].replace(/,/g, ''), 10);
+      } else {
+        // Extract price per night
+        const nightMatch = listing.price_text.match(/\$(\d+)/);
+        const pricePerNight = nightMatch ? parseInt(nightMatch[1], 10) : 0;
+        totalPrice = pricePerNight * calculateTripDays();
+      }
+      
+      console.log(`Listing price: $${totalPrice}, within budget: ${totalPrice <= maxAccommodationBudget}`);
+      
+      // Check if listing is within budget
+      return totalPrice <= maxAccommodationBudget;
+    });
+    
+    console.log(`Found ${affordableListings.length} affordable listings out of ${listings.length}`);
+    
+    return affordableListings;
   };
 
   // Handle requests for cheaper options
@@ -183,7 +229,37 @@ export default function ChatInterface() {
       return;
     }
     
-    simulateTyping("I understand you're looking for more affordable options. Here are some budget-friendly listings that might work for your trip:", true);
+    // Get the total budget
+    const totalBudget = parseInt(travelPreferences.totalBudget.replace(/[^0-9]/g, ''), 10);
+    const maxAccommodationBudget = totalBudget * 0.4; // 40% of total budget (more strict)
+    
+    // Extract and filter listings by a stricter budget
+    const cheaperListings = selectedListings.filter(listing => {
+      // Extract total price from listing
+      const totalMatch = listing.price_text.match(/\$([0-9,]+)\s+total/i);
+      let totalPrice = 0;
+      
+      if (totalMatch) {
+        // Remove commas and convert to number
+        totalPrice = parseInt(totalMatch[1].replace(/,/g, ''), 10);
+      } else {
+        // Extract price per night
+        const nightMatch = listing.price_text.match(/\$(\d+)/);
+        const pricePerNight = nightMatch ? parseInt(nightMatch[1], 10) : 0;
+        totalPrice = pricePerNight * calculateTripDays();
+      }
+      
+      // Check if listing is within the stricter budget
+      return totalPrice <= maxAccommodationBudget;
+    });
+    
+    if (cheaperListings.length === 0) {
+      simulateTyping(`I've looked for cheaper options, but couldn't find any listings below 40% of your total budget. The current options I've shown are the most affordable ones available that meet your criteria.`);
+      return;
+    }
+    
+    setSelectedListings(cheaperListings);
+    simulateTyping(`I've found some more budget-friendly options for you. These listings cost less than 40% of your total budget, which would leave you with more money for other aspects of your trip:`, true);
   };
 
   // Calculate trip days for display
