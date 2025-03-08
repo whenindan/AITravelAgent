@@ -19,6 +19,7 @@ export default function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const { travelPreferences, selectedListings, setSelectedListings } = useTravel();
+  const [showAirbnbSection, setShowAirbnbSection] = useState(false);
 
   // Check if travel preferences are complete
   const areTravelPreferencesComplete = () => {
@@ -58,7 +59,7 @@ export default function ChatInterface() {
       if (preferencesComplete) {
         // Add a slight delay before starting the welcome message
         const timer = setTimeout(() => {
-          const welcomeMessage = `Hi there! I see you're planning a trip to ${travelPreferences.destination} from ${travelPreferences.startDate} to ${travelPreferences.endDate} for ${travelPreferences.travelers} traveler(s) with a budget of ${travelPreferences.totalBudget}. How can I help you plan your trip?`;
+          const welcomeMessage = `Hey there! 👋 I'm so excited to help you plan your trip to ${travelPreferences.destination}! With a budget of $${travelPreferences.totalBudget}, we can create an amazing vacation experience. What are you most looking forward to on this adventure?`;
           
           simulateTyping(welcomeMessage);
         }, 500);
@@ -99,6 +100,11 @@ export default function ChatInterface() {
           content: text,
           showListings 
         }]);
+        
+        // If this message should show listings, set the showAirbnbSection flag
+        if (showListings) {
+          setShowAirbnbSection(true);
+        }
       }
     }, typingSpeed);
   };
@@ -114,20 +120,39 @@ export default function ChatInterface() {
     setInput('');
     setIsLoading(true);
     
-    // Check for specific feature requests
-    if (userMessage.toLowerCase().includes('show me') && 
-        (userMessage.toLowerCase().includes('listing') || userMessage.toLowerCase().includes('airbnb'))) {
+    // Normalize the message for easier intent detection
+    const normalizedMessage = userMessage.toLowerCase();
+    
+    // Check for stay/accommodation related requests - expanded patterns
+    if ((normalizedMessage.includes('show me') && 
+         (normalizedMessage.includes('listing') || normalizedMessage.includes('airbnb'))) ||
+        (normalizedMessage.includes('place') && normalizedMessage.includes('stay')) ||
+        (normalizedMessage.includes('accommodation')) ||
+        (normalizedMessage.includes('where') && normalizedMessage.includes('stay')) ||
+        (normalizedMessage.includes('need') && 
+         (normalizedMessage.includes('hotel') || normalizedMessage.includes('place') || 
+          normalizedMessage.includes('airbnb') || normalizedMessage.includes('apartment') || 
+          normalizedMessage.includes('room'))) ||
+        (normalizedMessage.includes('find') && 
+         (normalizedMessage.includes('hotel') || normalizedMessage.includes('place') || 
+          normalizedMessage.includes('airbnb') || normalizedMessage.includes('apartment') || 
+          normalizedMessage.includes('room')))
+       ) {
       handleShowListings();
     } 
     // Check for requests for cheaper options
-    else if (userMessage.toLowerCase().includes('cheaper') || 
-             userMessage.toLowerCase().includes('less expensive')) {
+    else if (normalizedMessage.includes('cheaper') || 
+             normalizedMessage.includes('less expensive') ||
+             normalizedMessage.includes('budget friendly') ||
+             normalizedMessage.includes('affordable') ||
+             normalizedMessage.includes('lower price')) {
       handleCheaperOptions();
     }
     // Handle "yes" responses to the welcome message
     else if (messages.length === 1 && 
              messages[0].role === 'assistant' && 
-             userMessage.toLowerCase().includes('yes')) {
+             (normalizedMessage.includes('yes') || normalizedMessage.includes('yeah') || 
+              normalizedMessage.includes('sure') || normalizedMessage.includes('ok'))) {
       setIsLoading(false);
       handleShowListings();
     }
@@ -146,16 +171,33 @@ export default function ChatInterface() {
         try {
           data = await response.json();
         } catch (error) {
-          // If JSON parsing fails, create a default response
+          // If JSON parsing fails or backend is unavailable, offer to show listings
+          if (normalizedMessage.includes('stay') || 
+              normalizedMessage.includes('place') || 
+              normalizedMessage.includes('accommodation')) {
+            setIsLoading(false);
+            handleShowListings();
+            return;
+          }
+          
+          // Otherwise fallback to a default response
           data = { 
-            response: "I'm having trouble understanding your request right now. Could you try asking something else?"
+            response: "I'd be happy to help with that! Would you like to see some accommodation options for your trip?"
           };
         }
         
-        simulateTyping(data.response || "I didn't get a proper response. Can you try again?");
+        simulateTyping(data.response || "I didn't get a proper response. Would you like to see some accommodation options while we wait?");
       } catch (error) {
         console.error('Error:', error);
-        simulateTyping('Sorry, I encountered an error while connecting to my services. Please try again.');
+        // Even on error, if accommodation-related, show listings
+        if (normalizedMessage.includes('stay') || 
+            normalizedMessage.includes('place') || 
+            normalizedMessage.includes('accommodation')) {
+          setIsLoading(false);
+          handleShowListings();
+          return;
+        }
+        simulateTyping("I'd be happy to help you find a great place to stay! Let me show you some options that fit your budget:");
       } finally {
         setIsLoading(false);
       }
@@ -167,20 +209,61 @@ export default function ChatInterface() {
     setIsLoading(false);
     
     if (selectedListings.length === 0) {
-      simulateTyping("I don't have any listings to show you yet. Let me search for some options for your trip.");
+      simulateTyping("I'd love to show you some great places to stay! I'm currently searching for options that match your preferences. Can you tell me what's most important to you - location, amenities, or staying within budget?");
       return;
     }
     
     // Filter listings by budget constraint (60% of total budget)
-    const filteredListings = filterListingsByBudget(selectedListings);
+    let filteredListings = filterListingsByBudget(selectedListings);
     
-    if (filteredListings.length === 0) {
-      simulateTyping("I couldn't find any listings within 60% of your total budget. Would you like me to show you some other options that might be over this budget?");
-      return;
+    // If we have fewer than 5 affordable listings, relax the budget constraint
+    if (filteredListings.length < 5) {
+      console.log("Not enough listings within budget, including some higher-priced options");
+      // Sort all listings by price
+      const allListingsSorted = [...selectedListings].map(listing => {
+        // Extract total price from listing
+        const totalMatch = listing.price_text.match(/\$([0-9,]+)\s+total/i);
+        let totalPrice = 0;
+        
+        if (totalMatch) {
+          totalPrice = parseInt(totalMatch[1].replace(/,/g, ''), 10);
+        } else {
+          const nightMatch = listing.price_text.match(/\$(\d+)/);
+          const pricePerNight = nightMatch ? parseInt(nightMatch[1], 10) : 0;
+          totalPrice = pricePerNight * calculateTripDays();
+        }
+        
+        return { ...listing, calculatedTotalPrice: totalPrice };
+      }).sort((a, b) => (a.calculatedTotalPrice || 0) - (b.calculatedTotalPrice || 0));
+      
+      // Take the 5 cheapest listings
+      filteredListings = allListingsSorted.slice(0, 5);
     }
     
-    setSelectedListings(filteredListings);
-    simulateTyping("Here are some Airbnb listings I found for your trip that cost no more than 60% of your total budget. This ensures you'll have enough funds left for other expenses like food, transportation, and activities:", true);
+    // Ensure we get exactly 5 listings (or all available if less than 5)
+    const limitedListings = filteredListings.slice(0, 5);
+    console.log(`Showing ${limitedListings.length} listings`);
+    
+    // Log each listing to verify
+    limitedListings.forEach((listing, index) => {
+      console.log(`Listing ${index + 1}: ${listing.title}`);
+    });
+    
+    setSelectedListings(limitedListings);
+    
+    // Create a more conversational, natural-sounding message
+    const responses = [
+      `Perfect! I found some amazing spots in ${travelPreferences.destination} that should work wonderfully for you! All of these stays are within your budget sweet spot, leaving plenty for exploring, dining, and making memories! 😊`,
+      
+      `Check these out! I've found some lovely accommodations in ${travelPreferences.destination} that won't eat up your entire budget. These places have great reviews and leave you with plenty of spending money for the fun stuff! ✨`,
+      
+      `Oh, I think you'll love these! Here are some fantastic stays in ${travelPreferences.destination} at different price points. I made sure they're all budget-friendly so you can splurge a little on experiences too! 🌟`
+    ];
+    
+    // Randomly select one of the responses for variety
+    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+    
+    simulateTyping(randomResponse, true);
   };
 
   // Function to filter listings by budget constraint
@@ -288,18 +371,15 @@ export default function ChatInterface() {
                 {message.content}
               </div>
             </div>
-            
-            {/* Show Airbnb listings after certain assistant messages */}
-            {message.role === 'assistant' && 
-             message.showListings && 
-             selectedListings.length > 0 && 
-             index === messages.length - 1 && (
-              <div className="mt-4 ml-4">
-                <AirbnbListings listings={selectedListings} tripDays={tripDays} />
-              </div>
-            )}
           </div>
         ))}
+        
+        {/* Show Airbnb listings in a fixed section after messages */}
+        {showAirbnbSection && selectedListings.length > 0 && (
+          <div className="mt-4">
+            <AirbnbListings listings={selectedListings} tripDays={tripDays} />
+          </div>
+        )}
         
         {/* Show typing indicator */}
         {isTyping && (

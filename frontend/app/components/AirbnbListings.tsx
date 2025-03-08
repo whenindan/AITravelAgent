@@ -18,16 +18,15 @@ export default function AirbnbListings({ listings, tripDays = 1 }: AirbnbListing
     return null;
   }
   
-  console.log(`Displaying ${listings.length} listings for ${tripDays} days`);
-
+  console.log(`AirbnbListings component received ${listings.length} listings`);
+  
   // Function to extract numeric price from price_text
   const extractPriceInfo = (priceText: string): { pricePerNight: number, totalPrice: number } => {
     // Extract price per night - look for the first dollar amount
     const nightMatch = priceText.match(/\$(\d+)/);
     const pricePerNight = nightMatch ? parseInt(nightMatch[1], 10) : 0;
     
-    // Extract total price - find the dollar amount before "total"
-    // This regex handles comma-formatted numbers like $2,709
+    // Extract total price - find the first occurrence of "$X total"
     const totalRegex = /\$([0-9,]+)\s+total/i;
     const totalMatch = priceText.match(totalRegex);
     let totalPrice = 0;
@@ -62,6 +61,7 @@ export default function AirbnbListings({ listings, tripDays = 1 }: AirbnbListing
       
       <div className="grid grid-cols-1 gap-3">
         {listings.map((listing, index) => {
+          console.log(`Rendering listing ${index + 1}: ${listing.title}`);
           const { pricePerNight, totalPrice } = extractPriceInfo(listing.price_text);
           const totalWithTax = calculateTotalWithTax(totalPrice);
           
