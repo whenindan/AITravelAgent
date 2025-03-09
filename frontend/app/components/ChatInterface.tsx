@@ -18,7 +18,7 @@ export default function ChatInterface() {
   const [currentTypingText, setCurrentTypingText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const { travelPreferences, selectedListings, setSelectedListings } = useTravel();
+  const { travelPreferences, selectedListings, setSelectedListings, fetchListingsWithImages } = useTravel();
   const [showAirbnbSection, setShowAirbnbSection] = useState(false);
 
   // Check if travel preferences are complete
@@ -50,7 +50,7 @@ export default function ChatInterface() {
     }
   }, [messages, currentTypingText]);
 
-  // Add initial welcome message when preferences are complete
+  // Update the effect that shows listings after preferences are complete
   useEffect(() => {
     // Only run this effect if we have no messages yet
     if (messages.length === 0) {
@@ -59,9 +59,21 @@ export default function ChatInterface() {
       if (preferencesComplete) {
         // Add a slight delay before starting the welcome message
         const timer = setTimeout(() => {
-          const welcomeMessage = `Hey there! 👋 I'm so excited to help you plan your trip to ${travelPreferences.destination}! With a budget of $${travelPreferences.totalBudget}, we can create an amazing vacation experience. What are you most looking forward to on this adventure?`;
+          const welcomeMessage = `Hey there! 👋 I'm so excited to help you plan your trip to ${travelPreferences.destination}! Let me find you some amazing places to stay within your budget of $${travelPreferences.totalBudget}!`;
           
           simulateTyping(welcomeMessage);
+          
+          // After the welcome message, show a loading indicator for 5 seconds
+          setTimeout(() => {
+            setIsTyping(true);
+            setCurrentTypingText("Searching for the best accommodations...");
+            setIsLoading(true); // Set loading state while fetching listings
+            
+            // After the loading indicator has shown for 5 seconds, show the listings
+            setTimeout(() => {
+              handleShowListings();
+            }, 5000); // Wait for 5 seconds
+          }, 1000);
         }, 500);
         
         return () => clearTimeout(timer);
@@ -76,6 +88,20 @@ export default function ChatInterface() {
     travelPreferences.endDate,
     travelPreferences.travelers,
     travelPreferences.totalBudget
+  ]);
+
+  // Add this effect to load initial listings when preferences are complete
+  useEffect(() => {
+    const preferencesComplete = areTravelPreferencesComplete();
+    
+    // Fetch listings when preferences are complete
+    if (preferencesComplete && selectedListings.length === 0) {
+      fetchListingsWithImages(travelPreferences.destination, travelPreferences.startDate);
+    }
+  }, [
+    travelPreferences.destination,
+    travelPreferences.startDate,
+    selectedListings.length
   ]);
 
   // Function to simulate typing effect - FIXED to include the first letter
@@ -204,103 +230,100 @@ export default function ChatInterface() {
     }
   };
 
-  // Handle showing listings
-  const handleShowListings = () => {
-    setIsLoading(false);
+  // Handle showing listings - update this function to always show at least 5 listings
+  const handleShowListings = async () => {
+    // Don't set isLoading to false yet, we're still working
     
     if (selectedListings.length === 0) {
-      simulateTyping("I'd love to show you some great places to stay! I'm currently searching for options that match your preferences. Can you tell me what's most important to you - location, amenities, or staying within budget?");
-      return;
-    }
-    
-    // Filter listings by budget constraint (60% of total budget)
-    let filteredListings = filterListingsByBudget(selectedListings);
-    
-    // If we have fewer than 5 affordable listings, relax the budget constraint
-    if (filteredListings.length < 5) {
-      console.log("Not enough listings within budget, including some higher-priced options");
-      // Sort all listings by price
-      const allListingsSorted = [...selectedListings].map(listing => {
-        // Extract total price from listing
-        const totalMatch = listing.price_text.match(/\$([0-9,]+)\s+total/i);
-        let totalPrice = 0;
+      // First try to fetch listings if we don't have any
+      try {
+        setIsTyping(true);
+        setCurrentTypingText("Searching for the best accommodations...");
         
-        if (totalMatch) {
-          totalPrice = parseInt(totalMatch[1].replace(/,/g, ''), 10);
-        } else {
-          const nightMatch = listing.price_text.match(/\$(\d+)/);
-          const pricePerNight = nightMatch ? parseInt(nightMatch[1], 10) : 0;
-          totalPrice = pricePerNight * calculateTripDays();
+        await fetchListingsWithImages(travelPreferences.destination, travelPreferences.startDate);
+        
+        // If after fetching we still have no listings, show a message
+        if (selectedListings.length === 0) {
+          setIsLoading(false); // Done loading
+          simulateTyping("I'd love to show you some great places to stay! I'm currently searching for options that match your preferences. Can you tell me what's most important to you - location, amenities, or staying within budget?");
+          return;
         }
-        
-        return { ...listing, calculatedTotalPrice: totalPrice };
-      }).sort((a, b) => (a.calculatedTotalPrice || 0) - (b.calculatedTotalPrice || 0));
-      
-      // Take the 5 cheapest listings
-      filteredListings = allListingsSorted.slice(0, 5);
+      } catch (error) {
+        console.error("Error fetching listings:", error);
+        setIsLoading(false); // Done loading
+        simulateTyping("I'm having trouble finding listings for your destination. Could you please check your internet connection or try again later?");
+        return;
+      }
     }
     
-    // Ensure we get exactly 5 listings (or all available if less than 5)
-    const limitedListings = filteredListings.slice(0, 5);
-    console.log(`Showing ${limitedListings.length} listings`);
-    
-    // Log each listing to verify
-    limitedListings.forEach((listing, index) => {
-      console.log(`Listing ${index + 1}: ${listing.title}`);
-    });
-    
-    setSelectedListings(limitedListings);
-    
-    // Create a more conversational, natural-sounding message
-    const responses = [
-      `Perfect! I found some amazing spots in ${travelPreferences.destination} that should work wonderfully for you! All of these stays are within your budget sweet spot, leaving plenty for exploring, dining, and making memories! 😊`,
-      
-      `Check these out! I've found some lovely accommodations in ${travelPreferences.destination} that won't eat up your entire budget. These places have great reviews and leave you with plenty of spending money for the fun stuff! ✨`,
-      
-      `Oh, I think you'll love these! Here are some fantastic stays in ${travelPreferences.destination} at different price points. I made sure they're all budget-friendly so you can splurge a little on experiences too! 🌟`
-    ];
-    
-    // Randomly select one of the responses for variety
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-    
-    simulateTyping(randomResponse, true);
-  };
-
-  // Function to filter listings by budget constraint
-  const filterListingsByBudget = (listings) => {
-    if (!listings || listings.length === 0) return [];
-    
-    // Calculate 60% of the total budget
+    // Get the total budget
     const totalBudget = parseInt(travelPreferences.totalBudget.replace(/[^0-9]/g, ''), 10);
+    
+    // Use 60% of budget as the maximum for accommodation
     const maxAccommodationBudget = totalBudget * 0.6;
     
-    console.log(`Total budget: $${totalBudget}, 60% max: $${maxAccommodationBudget}`);
-    
-    // Extract and filter listings by budget
-    const affordableListings = listings.filter(listing => {
+    // Filter listings by budget and sort by price (lowest first)
+    const listingsWithPrices = selectedListings.map(listing => {
       // Extract total price from listing
       const totalMatch = listing.price_text.match(/\$([0-9,]+)\s+total/i);
       let totalPrice = 0;
       
       if (totalMatch) {
-        // Remove commas and convert to number
         totalPrice = parseInt(totalMatch[1].replace(/,/g, ''), 10);
       } else {
-        // Extract price per night
         const nightMatch = listing.price_text.match(/\$(\d+)/);
         const pricePerNight = nightMatch ? parseInt(nightMatch[1], 10) : 0;
         totalPrice = pricePerNight * calculateTripDays();
       }
       
-      console.log(`Listing price: $${totalPrice}, within budget: ${totalPrice <= maxAccommodationBudget}`);
+      return { ...listing, totalPrice };
+    }).sort((a, b) => a.totalPrice - b.totalPrice); // Sort by price, lowest first
+    
+    // Always take at least 5 listings if available, but filter out any above 60% of budget
+    const affordableListings = listingsWithPrices.filter(listing => listing.totalPrice <= maxAccommodationBudget);
+    
+    // Take at least 5 listings or all affordable ones, whichever is smaller
+    const listingsToShow = affordableListings.slice(0, Math.max(5, affordableListings.length));
+    
+    // If we have fewer than 5 affordable listings but more total listings, take some more expensive ones
+    if (listingsToShow.length < 5 && listingsWithPrices.length > listingsToShow.length) {
+      // Add more listings up to 5 total, regardless of budget
+      const additionalListings = listingsWithPrices
+        .filter(listing => !listingsToShow.includes(listing))
+        .slice(0, 5 - listingsToShow.length);
       
-      // Check if listing is within budget
-      return totalPrice <= maxAccommodationBudget;
-    });
+      listingsToShow.push(...additionalListings);
+    }
     
-    console.log(`Found ${affordableListings.length} affordable listings out of ${listings.length}`);
+    // Update the selected listings
+    setSelectedListings(listingsToShow);
     
-    return affordableListings;
+    // Create a more accurate message based on the actual number of listings
+    const getResponse = (count: number, allAffordable: boolean) => {
+      if (count === 0) {
+        return `I've searched for accommodations in ${travelPreferences.destination}, but couldn't find any that match your criteria right now. Would you like me to try a different search?`;
+      } else if (count === 1) {
+        return `I found a fantastic place in ${travelPreferences.destination} for your stay! It's in a great location with excellent amenities. What do you think? 🏠✨`;
+      } else {
+        let response = `I found ${count} wonderful places in ${travelPreferences.destination} for your stay! These are all highly-rated options with great amenities.`;
+        
+        if (!allAffordable) {
+          response += ` Some options are above 60% of your total budget, but I'm showing them to give you more choices.`;
+        }
+        
+        return response + ` Which one catches your eye? 🏠✨`;
+      }
+    };
+
+    // Check if all listings shown are affordable
+    const allAffordable = listingsToShow.every(listing => 
+      listing.totalPrice <= maxAccommodationBudget
+    );
+
+    // Use the count-aware response
+    const response = getResponse(listingsToShow.length, allAffordable);
+    setIsLoading(false); // Done loading before showing the response
+    simulateTyping(response, true);
   };
 
   // Handle requests for cheaper options
@@ -374,14 +397,23 @@ export default function ChatInterface() {
           </div>
         ))}
         
-        {/* Show Airbnb listings in a fixed section after messages */}
-        {showAirbnbSection && selectedListings.length > 0 && (
+        {/* Show Airbnb listings with loading state */}
+        {showAirbnbSection && (
           <div className="mt-4">
-            <AirbnbListings listings={selectedListings} tripDays={tripDays} />
+            {selectedListings.length > 0 ? (
+              <AirbnbListings listings={selectedListings} tripDays={tripDays} />
+            ) : isLoading ? (
+              <div className="flex justify-center items-center p-8 bg-gray-50 rounded-lg">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-black mb-4"></div>
+                  <p className="text-gray-600">Loading accommodations in {travelPreferences.destination}...</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
         
-        {/* Show typing indicator */}
+        {/* Typing indicator */}
         {isTyping && (
           <div className="flex justify-start">
             <div className="max-w-[70%] rounded-lg p-3 bg-gray-100 text-gray-800">
@@ -401,28 +433,34 @@ export default function ChatInterface() {
         )}
         <div ref={messagesEndRef} />
       </div>
-      <form onSubmit={handleSubmit} className="p-4 border-t">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={preferencesComplete ? "Ask me about your trip..." : "Complete travel preferences first..."}
-            className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
-            disabled={isLoading || isTyping}
-          />
-          <button
-            type="submit"
-            disabled={!preferencesComplete || isLoading || isTyping}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              preferencesComplete && !isLoading && !isTyping
-                ? "bg-black text-white hover:bg-gray-800" 
-                : "bg-gray-300 text-gray-500 cursor-not-allowed"
-            }`}
-          >
-            {isLoading ? "Sending..." : "Send"}
-          </button>
-        </div>
+      <form onSubmit={handleSubmit} className="border-t p-4 flex gap-2">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          disabled={isLoading || isTyping}
+          placeholder={isLoading || isTyping ? "Please wait..." : "Type your message..."}
+          className={`flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            (isLoading || isTyping) ? 'bg-gray-100 text-gray-400' : 'text-black'
+          }`}
+        />
+        <button
+          type="submit"
+          disabled={isLoading || isTyping || !input.trim()}
+          className={`px-4 py-2 rounded-md ${
+            isLoading || isTyping || !input.trim()
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-black text-white hover:bg-gray-800'
+          }`}
+        >
+          {isLoading ? (
+            <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
+          ) : isTyping ? (
+            "Wait..."
+          ) : (
+            "Send"
+          )}
+        </button>
       </form>
     </div>
   );
