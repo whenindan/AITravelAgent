@@ -35,6 +35,12 @@ export default function ChatInterface() {
   // Multi-city Trip coming soon dialog
   const [showMultiCityDialog, setShowMultiCityDialog] = useState(false);
   
+  // DeepSearch coming soon dialog
+  const [showDeepSearchDialog, setShowDeepSearchDialog] = useState(false);
+  
+  // Budget Analyzer coming soon dialog
+  const [showBudgetDialog, setShowBudgetDialog] = useState(false);
+  
   // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -414,51 +420,16 @@ export default function ChatInterface() {
   const preferencesComplete = areTravelPreferencesComplete();
 
   return (
-    <div className="space-y-2 w-full flex flex-col items-center">
-      {/* Travel Details Dropdown */}
-      <div className="relative" ref={dropdownRef}>
-        <Button
-          onClick={() => setShowTravelDropdown(!showTravelDropdown)}
-          variant="outline"
-          size="sm"
-          className="mb-2"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Travel Details
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 9l-7 7-7-7" />
-          </svg>
-        </Button>
-        
-        {showTravelDropdown && (
-          <div className="absolute z-50 mt-1 w-48 bg-[#232323] border border-[#151515] rounded-md shadow-lg overflow-hidden">
-            <button
-              className="w-full text-left px-4 py-2 text-gray-200 hover:bg-[#151515] transition-colors"
-              onClick={handleRoundTripClick}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-              Round Trip
-            </button>
-            <button
-              className="w-full text-left px-4 py-2 text-gray-200 hover:bg-[#151515] transition-colors"
-              onClick={handleMultiCityClick}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              Multi-city Trip
-            </button>
-          </div>
-        )}
-      </div>
+    <div className="space-y-8 w-full flex flex-col items-center">
+      {/* Title section separate from chat */}
+      <h1 className="w-full text-3xl md:text-4xl font-bold tracking-tight text-white flex flex-col items-center justify-center text-center pt-8">
+        Good evening, Aditya.
+        <span className="text-gray-400 text-xl md:text-2xl mt-2 font-normal">What's the vacation stop?</span>
+      </h1>
       
       {/* Chat Interface */}
-      <div className="flex flex-col w-full sm:w-[350px] md:w-[900px] h-[400px] bg-transparent rounded-lg shadow-lg overflow-hidden">
-        <div ref={chatContainerRef} className="flex-1 p-4 overflow-y-auto bg-transparent">
+      <div className="flex flex-col w-full sm:w-[900px] md:w-[800px] bg-[#18181a] rounded-3xl shadow-lg overflow-hidden">
+        <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto bg-transparent min-h-[80px]">
           {messages.map((message, index) => (
             <div key={index} className="mb-4">
               <div
@@ -469,7 +440,7 @@ export default function ChatInterface() {
                 <div
                   className={`max-w-[75%] rounded-lg px-4 py-3 ${
                     message.role === 'user'
-                      ? 'bg-[#303031] text-white rounded-tr-none ml-auto'
+                      ? 'bg-[#303031] text-white rounded-tr-none ml-auto shadow-sm'
                       : 'bg-transparent text-white rounded-tl-none'
                   }`}
                 >
@@ -527,36 +498,107 @@ export default function ChatInterface() {
           )}
           <div ref={messagesEndRef} />
         </div>
-        <form onSubmit={handleSubmit} className="p-4 flex gap-2 bg-black">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isLoading || isTyping}
-            placeholder={isLoading || isTyping ? "Please wait..." : "Type your message..."}
-            className={`flex-1 bg-black border-white ${
-              (isLoading || isTyping) ? 'text-gray-400 placeholder-gray-500' : 'text-white placeholder-gray-400'
-            }`}
-          />
-          <Button
-            type="submit"
-            disabled={isLoading || isTyping || !input.trim()}
-            variant={isLoading || isTyping || !input.trim() ? "secondary" : "default"}
-            size="icon"
-            className="text-white bg-[#303031] hover:bg-[#3a3a3b]"
-          >
-            {isLoading ? (
-              <span className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></span>
-            ) : isTyping ? (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" />
-              </svg>
-            )}
-          </Button>
-        </form>
+        
+        {/* Input area styled like the example */}
+        <div className="px-6 pb-6">
+          <form onSubmit={handleSubmit} className="flex flex-col bg-[#272727] rounded-3xl p-2 pl-4 pb-4">
+            <div className="flex items-center gap-4">
+              {/* Buttons on the left side of input */}
+              <div className="flex gap-2">
+                <button type="button" className="flex items-center bg-[#1F1F1F] rounded-full px-2 py-1.5 text-gray-300 hover:bg-[#333] transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="relative flex-1">
+                <Input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  disabled={isLoading || isTyping}
+                  placeholder={isLoading || isTyping ? "Please wait..." : "What do you want to know?"}
+                  className="w-full border-none bg-transparent text-white placeholder-gray-400 focus:outline-none focus:ring-0 focus:border-none text-lg shadow-none focus:shadow-none"
+                  style={{ boxShadow: 'none' }}
+                />
+              </div>
+              
+              <Button
+                type="submit"
+                disabled={isLoading || isTyping || !input.trim()}
+                className="rounded-full bg-[#1F1F1F] p-2 hover:bg-[#333] transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 15l7-7 7 7" />
+                </svg>
+              </Button>
+            </div>
+            
+            {/* Tools underneath the clip icon */}
+            <div className="ml-4 mt-2 flex gap-2">
+              <button 
+                type="button" 
+                className="flex items-center bg-[#1F1F1F] rounded-full px-3 py-1.5 text-gray-300 hover:bg-[#333] transition-colors"
+                onClick={() => setShowDeepSearchDialog(true)}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                DeepSearch
+              </button>
+              
+              <div className="relative" ref={dropdownRef}>
+                <button 
+                  type="button" 
+                  className="flex items-center bg-[#1F1F1F] rounded-full px-3 py-1.5 text-gray-300 hover:bg-[#333] transition-colors"
+                  onClick={() => setShowTravelDropdown(!showTravelDropdown)}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Travel Details
+                </button>
+
+                {/* Travel Details dropdown menu */}
+                {showTravelDropdown && (
+                  <div className="absolute z-50 mt-1 left-0 w-48 bg-[#232323] border border-[#151515] rounded-md shadow-lg overflow-hidden">
+                    <button
+                      className="w-full text-left px-4 py-2 text-gray-200 hover:bg-[#151515] transition-colors"
+                      onClick={handleRoundTripClick}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      Round Trip
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 text-gray-200 hover:bg-[#151515] transition-colors"
+                      onClick={handleMultiCityClick}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                      </svg>
+                      Multi-city Trip
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 text-gray-200 hover:bg-[#151515] transition-colors"
+                      onClick={() => {
+                        setShowTravelDropdown(false);
+                        // Show budget analyzer dialog
+                        setShowBudgetDialog(true);
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Budget Analyzer
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
       
       {/* Travel Preferences Dialog */}
@@ -584,6 +626,48 @@ export default function ChatInterface() {
               We're working on adding support for multi-city trips. Check back later for this feature!
             </p>
             <Button className="mt-6" onClick={() => setShowMultiCityDialog(false)}>
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* DeepSearch Coming Soon Dialog */}
+      <Dialog open={showDeepSearchDialog} onOpenChange={setShowDeepSearchDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>DeepSearch</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 p-6 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h3 className="text-xl font-semibold text-white mb-2">Coming Soon!</h3>
+            <p className="text-gray-400">
+              We're working on adding DeepSearch capabilities to help you find relevant travel information faster. Check back later for this feature!
+            </p>
+            <Button className="mt-6" onClick={() => setShowDeepSearchDialog(false)}>
+              Got it
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add budget analyzer dialog */}
+      <Dialog open={showBudgetDialog} onOpenChange={setShowBudgetDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Budget Analyzer</DialogTitle>
+          </DialogHeader>
+          <div className="mt-4 p-6 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 mx-auto text-gray-500 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h3 className="text-xl font-semibold text-white mb-2">Coming Soon!</h3>
+            <p className="text-gray-400">
+              We're working on adding budget analyzer capabilities to help you optimize your travel spending. Check back later for this feature!
+            </p>
+            <Button className="mt-6" onClick={() => setShowBudgetDialog(false)}>
               Got it
             </Button>
           </div>
