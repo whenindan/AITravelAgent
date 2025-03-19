@@ -1,5 +1,12 @@
 'use client';
 
+import { useState } from 'react';
+import Image from 'next/image';
+import { StarIcon, XMarkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+
 interface Listing {
   title: string;
   price_text: string;
@@ -7,6 +14,9 @@ interface Listing {
   rating?: string;
   image_url?: string;
   fallback_image?: string;
+  description: string;
+  location: string;
+  amenities?: string[];
 }
 
 interface AirbnbListingsProps {
@@ -14,96 +24,158 @@ interface AirbnbListingsProps {
   tripDays: number;
 }
 
-export default function AirbnbListings({ listings, tripDays = 1 }: AirbnbListingsProps) {
+const AirbnbListings = ({ listings }: AirbnbListingsProps) => {
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   if (!listings || listings.length === 0) {
-    console.log("No listings to display");
-    return null;
+    return (
+      <div className="w-full max-w-4xl mx-auto mt-8 p-6 bg-[#151515] rounded-lg shadow-lg border border-gray-800">
+        <h2 className="text-2xl font-bold mb-4 text-white">Recommended Airbnb Listings</h2>
+        <p className="text-gray-400">No listings available at this time.</p>
+      </div>
+    );
   }
-  
-  console.log(`AirbnbListings component received ${listings.length} listings`);
-  
-  // Function to extract and format price information
-  const extractPriceInfo = (priceText: string) => {
-    // Extract price per night
-    const nightMatch = priceText.match(/\$(\d+)/);
-    const pricePerNight = nightMatch ? parseInt(nightMatch[1], 10) : 0;
-    
-    // Extract total price 
-    const totalMatch = priceText.match(/\$([0-9,]+)\s+total/i);
-    const totalPrice = totalMatch ? parseInt(totalMatch[1].replace(/,/g, ''), 10) : pricePerNight * tripDays;
-    
-    return { pricePerNight, totalPrice };
+
+  const openModal = (listing: Listing) => {
+    setSelectedListing(listing);
+    setDialogOpen(true);
   };
 
-  // Calculate total price with tax
-  const calculateTotalWithTax = (totalPrice: number): number => {
-    const taxRate = 0.08; // 8% tax
-    return totalPrice + (totalPrice * taxRate);
+  const closeModal = () => {
+    setDialogOpen(false);
   };
 
   return (
-    <div className="space-y-4 mb-6">
-      <h3 className="text-lg font-semibold text-gray-800">Recommended Airbnb Listings</h3>
-      
-      {/* Price estimate disclaimer */}
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4 text-sm text-blue-800">
-        <p><strong>Note:</strong> The prices shown are estimates based on the information provided by Airbnb. 
-        Actual prices may vary due to seasonal changes, additional fees, or host adjustments. 
-        When you decide on a listing, please let me know the actual total cost so I can update your budget accordingly.</p>
+    <div className="w-full max-w-4xl mx-auto mt-8 p-6 bg-[#151515] rounded-lg shadow-lg border border-gray-800">
+      <h2 className="text-2xl font-bold mb-6 text-white">Recommended Airbnb Listings</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {listings.map((listing, index) => (
+          <Card key={index} className="transition-transform hover:scale-[1.02]">
+            {listing.image_url && (
+              <div className="relative h-48 w-full rounded-t-lg overflow-hidden">
+                <Image
+                  src={listing.image_url}
+                  alt={listing.title}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            )}
+            <CardHeader className="pt-4 pb-0">
+              <CardTitle className="text-white truncate">
+                {listing.title}
+              </CardTitle>
+              <CardDescription className="font-medium text-gray-300">
+                ${listing.price_text.split(' ')[0]}/night
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-2">
+              <div className="flex items-center mb-2">
+                <StarIcon className="h-5 w-5 text-yellow-400" />
+                <span className="ml-1 text-gray-400">
+                  {listing.rating} ({listing.price_text.split(' ')[1]} reviews)
+                </span>
+              </div>
+              <p className="text-gray-500 text-sm truncate">
+                {listing.description}
+              </p>
+            </CardContent>
+            <CardFooter>
+              <Button
+                onClick={() => openModal(listing)}
+                className="w-full"
+              >
+                View Details
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
-      
-      <div className="grid grid-cols-1 gap-3">
-        {listings.map((listing, index) => {
-          const { pricePerNight, totalPrice } = extractPriceInfo(listing.price_text);
-          const totalWithTax = calculateTotalWithTax(totalPrice);
-          
-          return (
-            <div 
-              key={index} 
-              className="border rounded-lg overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-300"
-            >
-              <div className="flex flex-col">
-                {/* Content section - now takes full width */}
-                <div className="p-4 w-full flex flex-col justify-between">
-                  <div>
-                    <h4 className="font-medium text-gray-800 mb-2">{listing.title}</h4>
-                    {listing.rating && (
-                      <div className="flex items-center mb-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        <span className="text-sm text-gray-600 ml-1">{listing.rating}</span>
-                      </div>
-                    )}
-                    <div className="flex flex-col mt-2">
-                      <span className="text-gray-800 font-medium">${pricePerNight} per night</span>
-                      <span className="text-gray-600 text-sm">
-                        ${totalPrice.toLocaleString()} total before taxes
-                      </span>
-                      <span className="text-gray-600 text-sm">
-                        ${totalWithTax.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} total with taxes (8%)
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex justify-end">
-                    <a 
-                      href={listing.url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center text-sm bg-black text-white px-3 py-1 rounded hover:bg-gray-800 transition-colors"
-                    >
-                      <span>View on Airbnb</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                      </svg>
-                    </a>
-                  </div>
-                </div>
+
+      {/* Modal */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        {selectedListing && (
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{selectedListing.title}</DialogTitle>
+            </DialogHeader>
+
+            {selectedListing.image_url && (
+              <div className="relative h-64 w-full mb-4">
+                <Image
+                  src={selectedListing.image_url}
+                  alt={selectedListing.title}
+                  fill
+                  className="object-cover rounded-lg"
+                />
+              </div>
+            )}
+
+            <div className="mb-4">
+              <p className="text-gray-300 font-bold text-lg">
+                ${selectedListing.price_text.split(' ')[0]} per night
+              </p>
+              <div className="flex items-center mt-1">
+                <StarIcon className="h-5 w-5 text-yellow-400" />
+                <span className="ml-1 text-gray-400">
+                  {selectedListing.rating} ({selectedListing.price_text.split(' ')[1]} reviews)
+                </span>
               </div>
             </div>
-          );
-        })}
-      </div>
+
+            <div className="mb-4">
+              <h4 className="font-semibold text-white mb-2">Description</h4>
+              <p className="text-gray-400">{selectedListing.description}</p>
+            </div>
+
+            <div className="mb-4">
+              <h4 className="font-semibold text-white mb-2">Location</h4>
+              <p className="text-gray-400">{selectedListing.location}</p>
+            </div>
+
+            {selectedListing.amenities && selectedListing.amenities.length > 0 && (
+              <div className="mb-4">
+                <h4 className="font-semibold text-white mb-2">Amenities</h4>
+                <ul className="grid grid-cols-2 gap-2">
+                  {selectedListing.amenities.map((amenity, index) => (
+                    <li
+                      key={index}
+                      className="flex items-center text-gray-400"
+                    >
+                      <CheckCircleIcon className="h-5 w-5 text-gray-500 mr-2" />
+                      {amenity}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <DialogFooter className="mt-6">
+              <Button
+                variant="outline"
+                onClick={closeModal}
+                className="mr-2"
+              >
+                Close
+              </Button>
+              <Button
+                asChild
+              >
+                <a
+                  href={selectedListing.url || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on Airbnb
+                </a>
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
-} 
+};
+
+export default AirbnbListings; 

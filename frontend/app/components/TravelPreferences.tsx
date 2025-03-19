@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { useTravel } from '../context/TravelContext';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
 
 interface TravelPreferencesForm {
   destination: string;
@@ -11,6 +13,10 @@ interface TravelPreferencesForm {
   totalBudget: string;
   travelers: string;
   interests: string[];
+}
+
+interface TravelPreferencesProps {
+  closeModal?: () => void;
 }
 
 const INTEREST_OPTIONS = [
@@ -24,7 +30,7 @@ const INTEREST_OPTIONS = [
   'Nightlife',
 ];
 
-export default function TravelPreferences() {
+export default function TravelPreferences({ closeModal }: TravelPreferencesProps) {
   const { updateTravelPreferences, setSelectedListings } = useTravel();
   const [preferences, setPreferences] = useState<TravelPreferencesForm>({
     destination: '',
@@ -150,6 +156,9 @@ export default function TravelPreferences() {
         // Select 5 diverse listings and store them in context
         const diverseListings = selectDiverseListings(data.listings.listings);
         setSelectedListings(diverseListings);
+        
+        // Close the modal if the function is provided
+        if (closeModal) closeModal();
       } else {
         setError(data.error || 'An error occurred while processing your request');
       }
@@ -166,29 +175,28 @@ export default function TravelPreferences() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-6">
-      <h2 className="text-2xl font-bold mb-6 text-black">Travel Preferences</h2>
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
-      {scrapingStatus && (
-        <div className="mb-4 p-3 bg-blue-100 border border-blue-400 text-blue-700 rounded flex items-center">
-          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {scrapingStatus}
-        </div>
-      )}
+    <div className="w-full bg-[#151515] rounded-lg p-6 border border-[#151515]">
       <form onSubmit={handleSubmit} className="space-y-6">
+        {error && (
+          <div className="mb-4 p-3 bg-red-500/20 border border-red-500 text-red-400 rounded">
+            {error}
+          </div>
+        )}
+        {scrapingStatus && (
+          <div className="mb-4 p-3 bg-gray-800/50 border border-[#151515] text-gray-300 rounded flex items-center">
+            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {scrapingStatus}
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Traveling From*
             </label>
-            <input
+            <Input
               type="text"
               value={preferences.travelingFrom}
               onChange={(e) =>
@@ -198,16 +206,15 @@ export default function TravelPreferences() {
                 }))
               }
               placeholder="Enter your departure city"
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
               required
               disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Destination*
             </label>
-            <input
+            <Input
               type="text"
               value={preferences.destination}
               onChange={(e) =>
@@ -217,32 +224,30 @@ export default function TravelPreferences() {
                 }))
               }
               placeholder="Where would you like to go?"
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
               required
               disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Total Budget for Trip ($)*
             </label>
-            <input
+            <Input
               type="text"
               value={preferences.totalBudget}
               onChange={(e) =>
                 setPreferences((prev) => ({ ...prev, totalBudget: e.target.value }))
               }
               placeholder="Enter total budget (e.g., 2000)"
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black placeholder-gray-500"
               required
               disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Number of Travelers*
             </label>
-            <input
+            <Input
               type="number"
               min="1"
               value={preferences.travelers}
@@ -253,16 +258,15 @@ export default function TravelPreferences() {
                 }))
               }
               placeholder="Enter number of travelers"
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
               required
               disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               Start Date*
             </label>
-            <input
+            <Input
               type="date"
               value={preferences.startDate}
               onChange={(e) =>
@@ -271,22 +275,20 @@ export default function TravelPreferences() {
                   startDate: e.target.value,
                 }))
               }
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
               required
               disabled={isLoading}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white mb-2">
               End Date*
             </label>
-            <input
+            <Input
               type="date"
               value={preferences.endDate}
               onChange={(e) =>
                 setPreferences((prev) => ({ ...prev, endDate: e.target.value }))
               }
-              className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-black text-black"
               required
               disabled={isLoading}
             />
@@ -294,39 +296,47 @@ export default function TravelPreferences() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-white mb-2">
             Interests (Optional)
           </label>
           <div className="flex flex-wrap gap-2">
             {INTEREST_OPTIONS.map((interest) => (
-              <button
+              <Button
                 key={interest}
                 type="button"
                 onClick={() => handleInterestToggle(interest)}
-                className={`px-4 py-2 rounded-full text-sm ${
-                  preferences.interests.includes(interest)
-                    ? 'bg-black text-white'
-                    : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                }`}
+                variant={preferences.interests.includes(interest) ? "default" : "outline"}
+                size="sm"
                 disabled={isLoading}
               >
                 {interest}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
-        <button
-          type="submit"
-          className={`w-full py-3 rounded-lg transition-colors ${
-            isLoading
-              ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-black text-white hover:bg-gray-800'
-          }`}
-          disabled={isLoading}
-        >
-          {isLoading ? 'Loading Preferences...' : 'Submit'}
-        </button>
+        <div className="mt-8 pt-4 border-t border-[#232323]">
+          <div className="flex justify-center w-full">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              size="lg"
+              className="w-full"
+            >
+              {isLoading ? (
+                <div className="flex items-center justify-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </div>
+              ) : (
+                "Update Preferences"
+              )}
+            </Button>
+          </div>
+        </div>
       </form>
     </div>
   );
