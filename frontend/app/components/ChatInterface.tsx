@@ -7,6 +7,7 @@ import TravelPreferences from './TravelPreferences';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { IoMdSend } from "react-icons/io";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -421,14 +422,30 @@ export default function ChatInterface() {
 
   return (
     <div className="space-y-8 w-full flex flex-col items-center">
-      {/* Title section separate from chat */}
-      <h1 className="w-full text-3xl md:text-4xl font-bold tracking-tight text-white flex flex-col items-center justify-center text-center pt-8">
-        Good evening, Aditya.
-        <span className="text-gray-400 text-xl md:text-2xl mt-2 font-normal">What's the vacation stop?</span>
-      </h1>
+      {/* Logo text in top left corner */}
+      <div className="w-full px-8 py-6 absolute top-0 left-0 z-50">
+        <div className="flex items-center">
+          <h2 className="text-3xl md:text-3xl font-bold tracking-tight text-white">
+            voyagen
+          </h2>
+        </div>
+      </div>
+
+      {/* Space for pushing content down */}
+      <div className="h-64 w-full"></div>
+      
+      {/* Central Greeting */}
+      <div className="mb-20 text-center">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+          Good evening, Aditya.
+        </h1>
+        <p className="text-gray-400 text-xl md:text-2xl mt-2 font-normal">
+          What's the vacation stop?
+        </p>
+      </div>
       
       {/* Chat Interface */}
-      <div className="flex flex-col w-full sm:w-[900px] md:w-[800px] bg-[#18181a] rounded-3xl shadow-lg overflow-hidden">
+      <div className="flex flex-col w-full sm:w-[900px] md:w-[1000px] bg-[#18181a] rounded-3xl shadow-lg overflow-hidden">
         <div ref={chatContainerRef} className="flex-1 p-6 overflow-y-auto bg-transparent min-h-[80px]">
           {messages.map((message, index) => (
             <div key={index} className="mb-4">
@@ -526,11 +543,9 @@ export default function ChatInterface() {
               <Button
                 type="submit"
                 disabled={isLoading || isTyping || !input.trim()}
-                className="rounded-full bg-[#1F1F1F] p-2 hover:bg-[#333] transition-colors"
+                className="rounded-full bg-black hover:bg-[#1a1a1a] p-3 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 15l7-7 7 7" />
-                </svg>
+                <IoMdSend className="h-5 w-5 text-white" />
               </Button>
             </div>
             
@@ -673,6 +688,59 @@ export default function ChatInterface() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Budget Calculator */}
+      <div className="mt-8 sm:w-[900px] md:w-[1000px] bg-[#18181a] rounded-2xl shadow-lg overflow-hidden">
+        <div className="p-6">
+          <h2 className="text-xl font-semibold text-white mb-4">Budget Calculator</h2>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1">Total Trip Budget</label>
+              <div className="flex items-center">
+                <div className="bg-[#272727] rounded-l-lg px-3 py-2 text-gray-400">$</div>
+                <input 
+                  type="number"
+                  className="flex-1 bg-[#272727] rounded-r-lg px-3 py-2 text-white focus:outline-none"
+                  placeholder="0"
+                  min="0"
+                />
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-700 pt-4 mt-4">
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Flights</span>
+                <span className="text-white">$0</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Accommodation</span>
+                <span className="text-white">$0</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Activities</span>
+                <span className="text-white">$0</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Transportation</span>
+                <span className="text-white">$0</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-400">Food</span>
+                <span className="text-white">$0</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Miscellaneous</span>
+                <span className="text-white">$0</span>
+              </div>
+            </div>
+          </div>
+          
+          <Button className="w-full mt-6 bg-[#333] hover:bg-[#444] text-white">
+            Calculate Budget Breakdown
+          </Button>
+        </div>
+      </div>
     </div>
   );
 } 
