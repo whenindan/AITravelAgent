@@ -21,7 +21,6 @@ interface Listing {
 
 interface AirbnbListingsProps {
   listings: Listing[];
-  tripDays: number;
 }
 
 const AirbnbListings = ({ listings }: AirbnbListingsProps) => {

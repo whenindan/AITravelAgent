@@ -478,7 +478,6 @@ export default function ChatInterface() {
                     location: listing.price_text || '',
                     amenities: []
                   }))}
-                  tripDays={tripDays}
                 />
               ) : isLoading ? (
                 <div className="flex justify-center items-center p-8 bg-gray-800 rounded-lg">
@@ -688,59 +687,6 @@ export default function ChatInterface() {
           </div>
         </DialogContent>
       </Dialog>
-      
-      {/* Budget Calculator */}
-      <div className="mt-8 sm:w-[900px] md:w-[1000px] bg-[#18181a] rounded-2xl shadow-lg overflow-hidden">
-        <div className="p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Budget Calculator</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Total Trip Budget</label>
-              <div className="flex items-center">
-                <div className="bg-[#272727] rounded-l-lg px-3 py-2 text-gray-400">$</div>
-                <input 
-                  type="number"
-                  className="flex-1 bg-[#272727] rounded-r-lg px-3 py-2 text-white focus:outline-none"
-                  placeholder="0"
-                  min="0"
-                />
-              </div>
-            </div>
-            
-            <div className="border-t border-gray-700 pt-4 mt-4">
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Flights</span>
-                <span className="text-white">$0</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Accommodation</span>
-                <span className="text-white">$0</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Activities</span>
-                <span className="text-white">$0</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Transportation</span>
-                <span className="text-white">$0</span>
-              </div>
-              <div className="flex justify-between mb-2">
-                <span className="text-gray-400">Food</span>
-                <span className="text-white">$0</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Miscellaneous</span>
-                <span className="text-white">$0</span>
-              </div>
-            </div>
-          </div>
-          
-          <Button className="w-full mt-6 bg-[#333] hover:bg-[#444] text-white">
-            Calculate Budget Breakdown
-          </Button>
-        </div>
-      </div>
     </div>
   );
 } 

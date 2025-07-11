@@ -46,8 +46,7 @@ export function TravelProvider({ children }: { children: ReactNode }) {
     setTravelPreferences(prev => ({ ...prev, ...preferences }));
   };
 
-  // Fetch listings with images
-  const fetchListingsWithImages = async (destination, startDate) => {
+  const fetchListingsWithImages = async (destination: string, startDate: string): Promise<Listing[]> => {
     try {
       const formattedDate = startDate.replace(/-/g, '');
       const response = await fetch(`/api/listings?destination=${encodeURIComponent(destination)}&date=${formattedDate}`);
@@ -60,23 +59,10 @@ export function TravelProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
       
       // Process listings to ensure image URLs
-      const listingsWithImages = data.map(listing => {
-        // Log the raw listing to debug
-        console.log("Raw listing data:", JSON.stringify(listing, null, 2));
-        
-        // Keep the image_url property intact, don't modify it
-        return {
-          ...listing,
-          image_url: listing.image_url || listing.thumbnail_url
-        };
-      });
-      
-      console.log(`Retrieved ${listingsWithImages.length} listings with images`);
-      
-      // Debug the first listing's image URL
-      if (listingsWithImages.length > 0) {
-        console.log("First listing image URL:", listingsWithImages[0].image_url);
-      }
+      const listingsWithImages = data.map(listing => ({
+        ...listing,
+        image_url: listing.image_url || listing.thumbnail_url
+      }));
       
       setSelectedListings(listingsWithImages);
       return listingsWithImages;

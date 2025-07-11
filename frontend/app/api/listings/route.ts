@@ -8,14 +8,17 @@ const listingsCache = new Map();
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const destination = searchParams.get('destination');
-  const date = searchParams.get('date') || '';
+  const budget = searchParams.get('budget');
+  const checkIn = searchParams.get('checkIn');
+  const checkOut = searchParams.get('checkOut');
+  const guests = searchParams.get('guests');
   
   if (!destination) {
     return NextResponse.json({ error: 'Destination is required' }, { status: 400 });
   }
   
   // Create a cache key
-  const cacheKey = `${destination.toLowerCase()}_${date}`;
+  const cacheKey = `${destination.toLowerCase()}_${checkIn}_${checkOut}_${guests}`;
   
   // Check if we have cached results
   if (listingsCache.has(cacheKey)) {
@@ -24,76 +27,46 @@ export async function GET(request: Request) {
   }
   
   try {
-    let listingsData = null;
+    // Connect to the new Node.js backend
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
     
-    // Define possible file paths to check
-    const normalizedDestination = destination.replace(/\s+/g, '_');
-    const possiblePaths = [
-      // Most specific first
-      path.join(process.cwd(), '..', 'backend', `airbnb_listings_${normalizedDestination}_${date}.json`),
-      // Then any file for this destination
-      ...fs.existsSync(path.join(process.cwd(), '..', 'backend')) 
-        ? fs.readdirSync(path.join(process.cwd(), '..', 'backend'))
-            .filter(file => file.startsWith(`airbnb_listings_${normalizedDestination}`))
-            .map(file => path.join(process.cwd(), '..', 'backend', file))
-        : []
-    ];
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('destination', destination);
+    if (budget) params.append('budget', budget);
+    if (checkIn) params.append('checkIn', checkIn);
+    if (checkOut) params.append('checkOut', checkOut);
+    if (guests) params.append('guests', guests);
     
-    // Find the first existing file
-    let filePath = null;
-    for (const potentialPath of possiblePaths) {
-      if (fs.existsSync(potentialPath)) {
-        filePath = potentialPath;
-        break;
-      }
+    const response = await fetch(`${backendUrl}/api/listings?${params}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error('Backend listings API error:', response.status, response.statusText);
+      // Fall back to mock data
+      const fallbackListings = generateMockListings(destination, 10);
+      return NextResponse.json(fallbackListings);
     }
     
-    // If we found a file, read and parse it
-    if (filePath) {
-      try {
-        const fileData = fs.readFileSync(filePath, 'utf8');
-        const rawData = JSON.parse(fileData);
-        
-        // Extract listings - either from nested structure or direct array
-        listingsData = (rawData.listings && Array.isArray(rawData.listings)) 
-          ? rawData.listings 
-          : (Array.isArray(rawData) ? rawData : null);
-      } catch (error) {
-        console.error("Error parsing file:", error);
-      }
-    }
+    const data = await response.json();
     
-    // If we still don't have listings data, use mock data
-    if (!listingsData || listingsData.length === 0) {
-      listingsData = generateMockListings(destination, 10);
-    }
+    // Extract listings from the backend response
+    const backendListings = data.listings || [];
     
-    // Map the listings with minimal processing
-    const mappedListings = listingsData.map((listing, index) => {
-      // Get the raw thumbnail URL
-      const rawThumbnail = listing.thumbnail;
-      
-      // Log the raw thumbnail value
-      console.log(`Raw thumbnail for listing ${index + 1}:`, rawThumbnail);
-      
-      // Generate a high-quality fallback image that will definitely work
-      const fallbackImage = `https://source.unsplash.com/featured/600x400/?${encodeURIComponent(destination)},accommodation&t=${Date.now() + index}`;
-      
+    // Map the listings to the format expected by the frontend
+    const mappedListings = backendListings.map((listing: any, index: number) => {
       return {
         title: listing.title || `Listing in ${destination}`,
         price_text: listing.price_text || `$${Math.floor(Math.random() * 200) + 50} night`,
         url: listing.url || "https://www.airbnb.com/",
-        rating: listing.rating || `${(Math.random() * 1 + 4).toFixed(1)}`,
-        // Set both image properties for maximum compatibility
-        image_url: rawThumbnail || fallbackImage,
-        fallback_image: fallbackImage
+        rating: listing.rating || listing.rating_text || `${(Math.random() * 1 + 4).toFixed(1)}`,
+        image_url: listing.image_url || listing.thumbnail || `https://images.unsplash.com/photo-${1500000000000 + index}?w=400&h=300&fit=crop&crop=entropy&auto=format`,
+        fallback_image: `https://source.unsplash.com/featured/600x400/?${encodeURIComponent(destination)},accommodation&t=${Date.now() + index}`
       };
-    });
-    
-    // Debug the final processed listings
-    console.log(`Processed ${mappedListings.length} listings with thumbnails`);
-    mappedListings.forEach((listing, i) => {
-      console.log(`Final listing ${i + 1}: ${listing.title}, image: ${listing.image_url}`);
     });
     
     // Cache the results for future requests
@@ -102,7 +75,10 @@ export async function GET(request: Request) {
     return NextResponse.json(mappedListings);
   } catch (error) {
     console.error('Error in listings API:', error);
-    return NextResponse.json({ error: 'Failed to fetch listings' }, { status: 500 });
+    
+    // Fall back to mock data
+    const fallbackListings = generateMockListings(destination, 10);
+    return NextResponse.json(fallbackListings);
   }
 }
 

@@ -2,23 +2,37 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
-    const { message } = await request.json();
+    const { message, conversationHistory } = await request.json();
     
-    // Connect to the backend chatbot service
+    // Connect to the new Node.js backend
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
     
-    const response = await fetch(`${backendUrl}/chat`, {
+    const response = await fetch(`${backendUrl}/api/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ 
+        message,
+        conversationHistory: conversationHistory || []
+      }),
     });
     
     if (!response.ok) {
-      // Fall back to a simple response if the backend fails
+      // Try to get error details from the backend
+      let errorMessage = "I'm having trouble connecting to my backend services right now. Can you ask me something else or try again later?";
+      
+      try {
+        const errorData = await response.json();
+        if (errorData.response) {
+          errorMessage = errorData.response;
+        }
+      } catch (parseError) {
+        console.error('Error parsing error response:', parseError);
+      }
+      
       return NextResponse.json({
-        response: "I'm having trouble connecting to my backend services right now. Can you ask me something else or try again later?"
+        response: errorMessage
       });
     }
     
