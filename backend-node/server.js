@@ -20,9 +20,11 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 const chatRoutes = require('./routes/chat');
 const listingsRoutes = require('./routes/listings');
+const itineraryRoutes = require('./routes/itinerary');
 
 app.use('/api/chat', chatRoutes);
 app.use('/api/listings', listingsRoutes);
+app.use('/api/itinerary', itineraryRoutes);
 
 // Health check endpoint
 app.get('/health-check', (req, res) => {
@@ -41,6 +43,7 @@ app.get('/', (req, res) => {
     endpoints: {
       chat: '/api/chat',
       listings: '/api/listings',
+      itinerary: '/api/itinerary',
       health: '/health-check'
     }
   });
