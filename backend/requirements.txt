@@ -1,0 +1,42 @@
+# Web Scraping & Crawling
+scrapy>=2.8.0
+selenium>=4.8.0
+lxml>=4.9.0
+scrapy-rotating-proxies>=0.6.0
+scrapy-user-agents>=0.1.0
+fake-useragent>=1.1.0 
+
+# Apache Airflow & Workflow
+apache-airflow>=2.10.0,<3.0.0
+apache-airflow-providers-google>=10.0.0
+apache-airflow-providers-postgres>=5.4.0
+apache-airflow-providers-slack>=7.3.0
+apache-airflow-providers-http>=4.2.0
+celery>=5.2.0
+redis>=4.3.0
+pendulum>=3.0.0
+
+# dbt & Data Transformation
+dbt-core>=1.4.0
+dbt-bigquery>=1.4.0
+
+# Data Quality & Testing
+great-expectations>=0.15.0
+pydantic>=1.10.0
+
+# Web Development & APIs
+fastapi>=0.95.0
+uvicorn[standard]>=0.20.0
+streamlit>=1.17.0
+
+# Database Drivers
+pymongo>=4.3.0
+
+# Caching
+diskcache>=5.4.0
+
+# Async Support
+aiofiles>=22.1.0
+
+# JSON Processing
+orjson>=3.8.0
